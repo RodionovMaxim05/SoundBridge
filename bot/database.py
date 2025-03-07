@@ -84,16 +84,39 @@ class Database:
         user = session.query(User).filter(User.id == user_id).first()
         return {'token': user.token is not None, 'count_of_sharing': user.count_of_sharing}
 
+    def get_user_groups(self, user_id: int):
+        user = session.query(User).filter(User.id == user_id).first()
+        return user.groups
+
     def get_all_users(self):
         return session.query(User).all()
 
     # Group functions
 
-    def create_group(self, name: str, user: User) -> None:
-        group = Group(name)
+    def create_group(self, name: str, user_id: int) -> bool:
+        group = Group(name=name)
+        user = session.query(User).filter(User.id == user_id).first()
         group.users = [user]
         session.add(group)
         session.commit()
+        return True
+
+    def get_group_name(self, group_id: int) -> str:
+        group = session.query(Group).filter(Group.id == group_id).first()
+        return str(group.name)
+
+    def delete_group(self, group_id: int) -> bool:
+        group = session.query(Group).filter(Group.id == group_id).first()
+        if not group:
+            return False
+
+        session.delete(group)
+        session.commit()
+        return True
+
+    def get_group_users(self, group_id: int):
+        group = session.query(Group).filter(Group.id == group_id).first()
+        return group.users
 
     def add_user_to_group(self, group_id: int, user_id: int):  # TODO not user_id, need username
         group = session.query(Group).filter(Group.id == group_id).first()

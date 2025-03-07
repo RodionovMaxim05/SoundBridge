@@ -71,14 +71,9 @@ class Database:
 
     def update_user_token(self, user_id: int, new_token: str) -> bool:  # TODO add token validity check
         user = session.query(User).filter(User.id == user_id).first()
-        if user:
-            user.token = new_token
-            session.commit()
-            print(f"Token updated for user id {user_id}.")
-            return True
-        else:
-            print(f"User with id {user_id} not found.")
-            return False
+        user.token = new_token
+        session.commit()
+        return True
 
     def get_user_statistic(self, user_id: int) -> dict:
         user = session.query(User).filter(User.id == user_id).first()
@@ -88,8 +83,12 @@ class Database:
         user = session.query(User).filter(User.id == user_id).first()
         return user.groups
 
-    def get_all_users(self):
-        return session.query(User).all()
+    def check_username(self, username: str) -> bool:
+        user = session.query(User).filter(User.name == username).first()
+        if user:
+            return True
+        else:
+            return False
 
     # Group functions
 
@@ -118,18 +117,16 @@ class Database:
         group = session.query(Group).filter(Group.id == group_id).first()
         return group.users
 
-    def add_user_to_group(self, group_id: int, user_id: int):  # TODO not user_id, need username
+    def add_user_to_group(self, group_id: int, user_name: str) -> bool:
         group = session.query(Group).filter(Group.id == group_id).first()
-        if group:
-            user = session.query(User).filter(User.id == user_id).first()
-            if user:
-                group.users.extend([user])
-                session.commit()
-                print(f"User {user_id} added to {group_id}.")
-            else:
-                print(f"User with id {user_id} not found.")
+
+        user = session.query(User).filter(User.name == user_name).first()
+        if user:
+            group.users.extend([user])
+            session.commit()
+            return True
         else:
-            print(f"Group with id {group_id} not found.")
+            return False
 
     # Track functions
 

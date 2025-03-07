@@ -48,6 +48,7 @@ async def manage_groups(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     keyboard = [
         [InlineKeyboardButton("🛠 Создать группу", callback_data=str(CallbackData.CREATE_GROUP.value))],
+        [InlineKeyboardButton("➕ Добавить пользователя в группу", callback_data=str(CallbackData.ADD_USER.value))],
         [InlineKeyboardButton("🗑 Удалить группу", callback_data=str(CallbackData.DELETE_GROUP.value))],
         [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))],
     ]
@@ -242,3 +243,80 @@ async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     logger.info(f"User {update.effective_user.id} in \"token_handler\"")
     await update.message.reply_text("Помощи нет.")
+
+
+async def name_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """
+    Handles the username input step. Prompts the user to enter a username (with @) to add to a group.
+    """
+
+    logger.info(f"User {update.effective_user.id} in \"name_handler\"")
+    query = update.callback_query
+    await query.answer()
+
+    await query.edit_message_text("Введите Username пользователя (вместе с @)\n\nИли напишить /start для отмены")
+    return State.TAKE_USERNAME.value
+
+
+async def check_name_and_choose_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """
+    Validates the entered username and displays a list of groups to which the user can be added.
+    If the username is invalid, notifies the user and provides an option to go back.
+    """
+
+    user = update.effective_user
+    logger.info(f"User {user.id} in \"check_name_and_choose_group\"")
+
+    user_message = update.message.text
+    if database.check_username(user_message):
+        groups = database.get_user_groups(user.id)
+
+        keyboard = []
+        for group in groups:
+            keyboard.append([InlineKeyboardButton(f"{group.name}", callback_data=f"addUser*{user_message}*{group.id}")])
+
+        keyboard.append([InlineKeyboardButton(f"🔙 Назад", callback_data=str(CallbackData.MANAGE_GROUPS.value))])
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await update.message.reply_text("Выберите группу, в которую хотите добавить пользователя",
+                                        reply_markup=reply_markup)
+        return State.USER_TO_GROUP.value
+    else:
+        keyboard = [
+            [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MANAGE_GROUPS.value))],
+        ]
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(
+            f"❌ Пользователя {user_message} нет в базе данных бота.\n\nЕсли username правильный, попросите пользователя запустить бота.",
+            reply_markup=reply_markup)
+
+        return State.START.value
+
+
+async def add_user_to_the_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """
+    Adds the selected user to the chosen group. Notifies the user of success or failure.
+    """
+
+    logger.info(f"User {update.effective_user.id} in \"add_user_to_the_group\"")
+    query = update.callback_query
+    await query.answer()
+
+    callback_data = query.data
+    username = str(callback_data.split("*")[1])
+    group_id = int(callback_data.split("*")[2])
+
+    if database.add_user_to_group(group_id, username):
+        keyboard = [
+            [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))],
+        ]
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(f"✅ Пользователь {username} успешно добавлен в группу {group_id}",
+                                      reply_markup=reply_markup)
+
+        return State.START.value
+
+    await update.message.reply_text("Что-то пошло не так :(")
+    return ConversationHandler.END

@@ -4,7 +4,7 @@ import telegram
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
 
-from bot.utils import database, format_groups_with_users
+from bot.utils import database, format_groups_with_users, send_or_edit_message
 from constants import State, CallbackData
 
 logger = logging.getLogger(__name__)
@@ -22,16 +22,13 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     database.insert_user(user.id, user.name)
 
     keyboard = [
+        [InlineKeyboardButton("📊 Мой аккаунт", callback_data=str(CallbackData.ACCOUNT.value))],
         [InlineKeyboardButton("👨‍👩‍👦‍👦 Управление группами", callback_data=str(CallbackData.MANAGE_GROUPS.value))],
         [InlineKeyboardButton("⚙️ Обновить Токен", callback_data=str(CallbackData.UPDATE_TOKEN.value))],
     ]
-
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if update.message:
-        await update.message.reply_text("Пожалуйста, выберите действие:", reply_markup=reply_markup)
-    else:
-        await update.callback_query.edit_message_text("Пожалуйста, выберите действие:", reply_markup=reply_markup)
+    await send_or_edit_message(update, text="Пожалуйста, выберите действие", reply_markup=reply_markup)
 
     return State.START.value
 
@@ -231,9 +228,20 @@ async def account_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     result = database.get_user_statistic(user.id)
 
     token = '✔️' if result.get('token') else '❌'
-    await update.message.reply_text(
-        text=f"<b>Ваш аккаунт\n\nТокен:</b> {token}\n\n📊 <b>Statistics\n\nКоличество:</b> {result.get('count_of_sharing')}\n",
-        parse_mode=telegram.constants.ParseMode.HTML)
+
+    keyboard = [
+        [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await send_or_edit_message(
+        update,
+        text=f"<b>Ваш аккаунт\n\nТокен:</b> {token}\n\n📊 <b>Statistics\n\nКоличество треков, которыми поделился:</b> {result.get('count_of_sharing')}\n",
+        reply_markup=reply_markup,
+        parse_mode=telegram.constants.ParseMode.HTML
+    )
+
+    return State.START.value
 
 
 async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

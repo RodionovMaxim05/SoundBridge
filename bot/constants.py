@@ -16,6 +16,7 @@ class CallbackData(Enum):
     """Callback data"""
 
     MENU = auto()
+    ACCOUNT = auto()
     MANAGE_GROUPS = auto()
     CREATE_GROUP = auto()
     DELETE_GROUP = auto()

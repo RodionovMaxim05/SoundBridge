@@ -12,6 +12,7 @@ main_conversation = ConversationHandler(
     ],
     states={
         State.START.value: [
+            CallbackQueryHandler(account_handler, pattern="^" + str(CallbackData.ACCOUNT.value) + "$"),
             CallbackQueryHandler(manage_groups, pattern="^" + str(CallbackData.MANAGE_GROUPS.value) + "$"),
             CallbackQueryHandler(create_group_handler, pattern="^" + str(CallbackData.CREATE_GROUP.value) + "$"),
             CallbackQueryHandler(delete_group_handler, pattern="^" + str(CallbackData.DELETE_GROUP.value) + "$"),

@@ -1,38 +1,12 @@
 import logging
-from enum import auto, Enum
 
 import telegram
-from decouple import config
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CommandHandler, CallbackQueryHandler, ConversationHandler, Application, MessageHandler, filters
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, ConversationHandler
 
-from database import Database
+from bot.utils import database, format_groups_with_users
+from constants import State, CallbackData
 
-database = Database()
-
-
-class State(Enum):
-    """States"""
-    START = auto()
-    ENTER_TOKEN = auto()
-    CREATE_GROUP = auto()
-    DELETE_GROUP = auto()
-
-
-class CallbackData(Enum):
-    """Callback data"""
-    MENU = auto()
-    MANAGE_GROUPS = auto()
-    CREATE_GROUP = auto()
-    DELETE_GROUP = auto()
-    UPDATE_TOKEN = auto()
-
-
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
 logger = logging.getLogger(__name__)
 
 
@@ -60,18 +34,6 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.callback_query.edit_message_text("Пожалуйста, выберите действие:", reply_markup=reply_markup)
 
     return State.START.value
-
-
-def format_groups_with_users(user_id: int) -> str:
-    """
-    Formats the list of groups and their members for a given user into a readable string.
-    """
-
-    user_groups = database.get_user_groups(user_id)
-    return "\n\n".join(
-        f"Группа: {group.name}\nУчастники: {', '.join(user.name for user in database.get_group_users(group.id))}"
-        for group in user_groups
-    )
 
 
 async def manage_groups(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -280,52 +242,3 @@ async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     logger.info(f"User {update.effective_user.id} in \"token_handler\"")
     await update.message.reply_text("Помощи нет.")
-
-
-main_conversation = ConversationHandler(
-    entry_points=[
-        CommandHandler("start", start_handler),
-        CommandHandler("token", token_handler)
-    ],
-    states={
-        State.START.value: [
-            CallbackQueryHandler(manage_groups, pattern="^" + str(CallbackData.MANAGE_GROUPS.value) + "$"),
-            CallbackQueryHandler(create_group_handler, pattern="^" + str(CallbackData.CREATE_GROUP.value) + "$"),
-            CallbackQueryHandler(delete_group_handler, pattern="^" + str(CallbackData.DELETE_GROUP.value) + "$"),
-            CallbackQueryHandler(token_handler, pattern="^" + str(CallbackData.UPDATE_TOKEN.value) + "$"),
-            CallbackQueryHandler(start_handler, pattern="^" + str(CallbackData.MENU.value) + "$"),
-        ],
-        State.CREATE_GROUP.value: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_name_of_group)],
-        State.DELETE_GROUP.value: [
-            CallbackQueryHandler(confirm_group_deletion, pattern="^delete_"),
-            CallbackQueryHandler(delete_group_callback_handler, pattern="^exactly_"),
-            CallbackQueryHandler(start_handler, pattern="^" + str(CallbackData.MENU.value) + "$"),
-        ],
-        State.ENTER_TOKEN.value: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_token)],
-    },
-    fallbacks=[CommandHandler("start", start_handler)],
-)
-
-
-def register_handlers(application):
-    """
-    Registers all command and conversation handlers with the bot application.
-    """
-
-    application.add_handler(CommandHandler('help', help_handler))
-    application.add_handler(CommandHandler('account', account_handler))
-    application.add_handler(main_conversation)
-
-
-def main() -> None:
-    """
-    Initializes the bot, sets up the application, and starts polling for updates.
-    """
-    
-    application = Application.builder().token(config('TOKEN')).build()
-    register_handlers(application)
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
-
-
-if __name__ == "__main__":
-    main()

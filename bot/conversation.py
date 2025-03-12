@@ -1,10 +1,12 @@
 from telegram.ext import ConversationHandler, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 
-from bot.handlers import check_name_and_choose_group, name_handler, add_user_to_the_group, \
-    share_track_handler, choose_track_handler, receive_message, show_liked_track, message_handler
+from bot.group_management import manage_groups, create_group_handler, delete_group_handler, name_handler, \
+    receive_name_of_group, confirm_group_deletion, delete_group_callback_handler, check_name_and_choose_group, \
+    add_user_to_the_group
+from bot.sharing_tracks import share_track_handler, choose_track_handler, message_handler, show_liked_track, \
+    receive_message
+from common_handlers import start_handler, token_handler, receive_token, help_handler, account_handler
 from constants import State, CallbackData
-from handlers import start_handler, manage_groups, create_group_handler, receive_name_of_group, delete_group_handler, \
-    confirm_group_deletion, delete_group_callback_handler, token_handler, receive_token, help_handler, account_handler
 
 main_conversation = ConversationHandler(
     entry_points=[

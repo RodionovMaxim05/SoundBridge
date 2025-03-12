@@ -90,6 +90,14 @@ class Database:
         else:
             return False
 
+    def get_token(self, user_id: int) -> str:
+        user = session.query(User).filter(User.id == user_id).first()
+        return user.token
+
+    def incr_count_of_sharing(self, user_id: int) -> None:
+        user = session.query(User).filter(User.id == user_id).first()
+        user.count_of_sharing += 1
+
     # Group functions
 
     def create_group(self, name: str, user_id: int) -> bool:

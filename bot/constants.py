@@ -10,6 +10,8 @@ class State(Enum):
     DELETE_GROUP = auto()
     TAKE_USERNAME = auto()
     USER_TO_GROUP = auto()
+    SHARE_TRACK = auto()
+    TAKE_MESSAGE = auto()
 
 
 class CallbackData(Enum):
@@ -22,3 +24,5 @@ class CallbackData(Enum):
     DELETE_GROUP = auto()
     ADD_USER = auto()
     UPDATE_TOKEN = auto()
+    SEND_MESSAGE = auto()
+    CHOOSE_LIKED_TRACK = auto()

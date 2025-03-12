@@ -1,4 +1,5 @@
 from telegram import Update, InlineKeyboardMarkup
+from yandex_music import Track
 
 from database import Database
 
@@ -12,8 +13,18 @@ def format_groups_with_users(user_id: int) -> str:
 
     user_groups = database.get_user_groups(user_id)
     return "\n\n".join(
-        f"Группа: {group.name}\nУчастники: {', '.join(user.name for user in database.get_group_users(group.id))}"
+        f"Группа: {group.name}\n\t\t\t\tУчастники: {', '.join(user.name for user in database.get_group_users(group.id))}"
         for group in user_groups
+    )
+
+
+def format_users_of_group(group_id: int) -> str:
+    """
+    Formats the information about a group and its members into a readable string.
+    """
+
+    return (
+        f"Группа: {database.get_group_name(group_id)}\n\t\t\t\tУчастники: {', '.join(user.name for user in database.get_group_users(group_id))}\n\n"
     )
 
 
@@ -23,7 +34,38 @@ async def send_or_edit_message(update: Update, text: str, reply_markup: InlineKe
     A universal function for sending or editing a message.
     Determines whether a new message should be sent or an existing one edited.
     """
+
     if update.message:
         await update.message.reply_text(text=text, reply_markup=reply_markup, parse_mode=parse_mode)
     else:
         await update.callback_query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode=parse_mode)
+
+
+def fix_yandex_image_url(url: str, size: str = "m1000x1000") -> str:
+    """
+    Fixes a Yandex image URL by adding the protocol and replacing `%%` with the desired size.
+    """
+
+    if not url.startswith("http"):
+        url = f"https://{url}"
+    if url.endswith("/%%"):
+        url = url.replace("/%%", f"/{size}")
+    return url
+
+
+def make_url_for_track(track_info: Track):
+    """
+    Generates a Yandex Music URL for the given track.
+    """
+
+    return f"https://music.yandex.ru/album/{track_info.albums[0].id}/track/{track_info.id}"
+
+
+def format_message(username: str, user_message: str, track_info: Track) -> str:
+    """
+    Formats a message with track information and user's comment.
+    """
+
+    return (
+        f"<a href=\"{make_url_for_track(track_info)}\">{track_info.artists[0].name} - {track_info.title}</a>\n\n"
+        f"От {username}:\n<blockquote>{user_message}</blockquote>")

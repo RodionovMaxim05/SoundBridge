@@ -1,6 +1,7 @@
 from telegram.ext import ConversationHandler, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 
-from bot.handlers import check_name_and_choose_group, name_handler, add_user_to_the_group
+from bot.handlers import check_name_and_choose_group, name_handler, add_user_to_the_group, \
+    share_track_handler, choose_track_handler, receive_message, show_liked_track, message_handler
 from constants import State, CallbackData
 from handlers import start_handler, manage_groups, create_group_handler, receive_name_of_group, delete_group_handler, \
     confirm_group_deletion, delete_group_callback_handler, token_handler, receive_token, help_handler, account_handler
@@ -8,7 +9,8 @@ from handlers import start_handler, manage_groups, create_group_handler, receive
 main_conversation = ConversationHandler(
     entry_points=[
         CommandHandler("start", start_handler),
-        CommandHandler("token", token_handler)
+        CommandHandler("token", token_handler),
+        CommandHandler("account", account_handler)
     ],
     states={
         State.START.value: [
@@ -19,6 +21,7 @@ main_conversation = ConversationHandler(
             CallbackQueryHandler(name_handler, pattern="^" + str(CallbackData.ADD_USER.value) + "$"),
             CallbackQueryHandler(token_handler, pattern="^" + str(CallbackData.UPDATE_TOKEN.value) + "$"),
             CallbackQueryHandler(start_handler, pattern="^" + str(CallbackData.MENU.value) + "$"),
+            CallbackQueryHandler(share_track_handler, pattern="^" + str(CallbackData.SEND_MESSAGE.value) + "$"),
         ],
         State.CREATE_GROUP.value: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_name_of_group)],
         State.DELETE_GROUP.value: [
@@ -29,9 +32,16 @@ main_conversation = ConversationHandler(
         State.TAKE_USERNAME.value: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_name_and_choose_group)],
         State.USER_TO_GROUP.value: [
             CallbackQueryHandler(name_handler, pattern="^" + str(CallbackData.ADD_USER.value) + "$"),
-            CallbackQueryHandler(add_user_to_the_group, pattern="^addUser*"),
+            CallbackQueryHandler(add_user_to_the_group, pattern="^addUser_"),
             CallbackQueryHandler(start_handler, pattern="^" + str(CallbackData.MENU.value) + "$"),
         ],
+        State.SHARE_TRACK.value: [
+            CallbackQueryHandler(choose_track_handler, pattern="^share_"),
+            CallbackQueryHandler(show_liked_track, pattern="^" + str(CallbackData.CHOOSE_LIKED_TRACK.value) + "$"),
+            CallbackQueryHandler(message_handler, pattern="^chosen_"),
+            CallbackQueryHandler(start_handler, pattern="^" + str(CallbackData.MENU.value) + "$"),
+        ],
+        State.TAKE_MESSAGE.value: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_message)],
         State.ENTER_TOKEN.value: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_token)],
     },
     fallbacks=[CommandHandler("start", start_handler)],

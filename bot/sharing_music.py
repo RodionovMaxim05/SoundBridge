@@ -6,7 +6,7 @@ from telegram.ext import ContextTypes
 from bot.common_handlers import logger
 from bot.music import get_last_five_liked_track, get_track_info, search_request, get_album_info
 from bot.utils import database, format_users_of_group, \
-    fix_yandex_image_url, format_message
+    fix_yandex_image_url, format_message, send_or_edit_message
 from constants import State, CallbackData
 
 
@@ -61,6 +61,22 @@ async def choose_music_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     return State.SHARE_MUSIC.value
 
 
+async def handle_error_with_back_button(
+        update: Update,
+        error_message: str,
+        back_button_callback_data: str = str(CallbackData.MENU.value),
+        state: int = State.START.value
+) -> int:
+    """
+    Handles errors by displaying an error message with a "Back" button.
+    """
+
+    keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data=back_button_callback_data)]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await send_or_edit_message(update, text=error_message, reply_markup=reply_markup)
+    return state
+
+
 async def show_liked_track(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Displays the last five liked tracks for the user to choose from.
@@ -71,7 +87,10 @@ async def show_liked_track(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     query = update.callback_query
     await query.answer()
 
-    liked_tracks = await get_last_five_liked_track(user.id)
+    try:
+        liked_tracks = await get_last_five_liked_track(user.id)
+    except ValueError as e:
+        return await handle_error_with_back_button(update, str(e))
 
     keyboard = [
         [InlineKeyboardButton(f"{track.artists[0].name} - {track.title}", callback_data=f"chosen_{track.id}")]
@@ -124,10 +143,14 @@ async def receive_search_query(update: Update, context: ContextTypes.DEFAULT_TYP
 
     user = update.effective_user
     logger.info(f"User {user.id} in \"receive_search_query\"")
-    query = update.message.text
+    user_message = update.message.text
 
     type_of_search = context.user_data["search"]
-    result_of_search = await search_request(user.id, query, type_of_search)
+
+    try:
+        result_of_search = await search_request(user.id, user_message, type_of_search)
+    except ValueError as e:
+        return await handle_error_with_back_button(update, str(e))
 
     count_of_results = min(result_of_search.total, 7)
 

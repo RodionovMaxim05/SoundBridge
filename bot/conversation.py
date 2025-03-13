@@ -50,7 +50,8 @@ main_conversation = ConversationHandler(
         State.SEARCH_QUERY_MUSIC.value: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_search_query)],
 
     },
-    fallbacks=[CommandHandler("start", start_handler)],
+    fallbacks=[CommandHandler("start", start_handler),
+               CommandHandler("token", token_handler)],
 )
 
 
@@ -60,5 +61,4 @@ def register_handlers(application):
     """
 
     application.add_handler(CommandHandler('help', help_handler))
-    application.add_handler(CommandHandler('account', account_handler))
     application.add_handler(main_conversation)

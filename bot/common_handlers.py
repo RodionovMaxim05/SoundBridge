@@ -40,10 +40,8 @@ async def token_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     """
 
     logger.info(f"User {update.effective_user.id} in \"token_handler\"")
-    query = update.callback_query
-    await query.answer()
-
-    await query.edit_message_text("Введите ваш токен\n\nИли напишить /start для отмены")
+    await send_or_edit_message(update, text="Введите ваш токен\n\nИли напишить /start для отмены")
+    
     return State.ENTER_TOKEN.value
 
 

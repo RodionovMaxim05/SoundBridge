@@ -53,19 +53,19 @@ def fix_yandex_image_url(url: str, size: str = "m1000x1000") -> str:
     return url
 
 
-def make_url_for_track(track_info: Track):
+def make_url_for_music(music_info: Track, type_of_search: str):
     """
-    Generates a Yandex Music URL for the given track.
+    Generates a Yandex Music URL for the given music.
     """
 
-    return f"https://music.yandex.ru/album/{track_info.albums[0].id}/track/{track_info.id}"
+    return f"https://music.yandex.ru/album/{music_info.albums[0].id}/track/{music_info.id}" if type_of_search == "track" else f"https://music.yandex.ru/album/{music_info.id}"
 
 
-def format_message(username: str, user_message: str, track_info: Track) -> str:
+def format_message(username: str, user_message: str, music_info: Track, type_of_search: str) -> str:
     """
-    Formats a message with track information and user's comment.
+    Formats a message with music information and user's comment.
     """
 
     return (
-        f"<a href=\"{make_url_for_track(track_info)}\">{track_info.artists[0].name} - {track_info.title}</a>\n\n"
+        f"<a href=\"{make_url_for_music(music_info, type_of_search)}\">{music_info.artists[0].name} - {music_info.title}</a>\n\n"
         f"От {username}:\n<blockquote>{user_message}</blockquote>")

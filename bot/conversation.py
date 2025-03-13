@@ -3,8 +3,8 @@ from telegram.ext import ConversationHandler, CommandHandler, CallbackQueryHandl
 from bot.group_management import manage_groups, create_group_handler, delete_group_handler, name_handler, \
     receive_name_of_group, confirm_group_deletion, delete_group_callback_handler, check_name_and_choose_group, \
     add_user_to_the_group
-from bot.sharing_tracks import share_track_handler, choose_track_handler, message_handler, show_liked_track, \
-    receive_message
+from bot.sharing_music import share_music_handler, choose_music_handler, message_handler, show_liked_track, \
+    receive_message, receive_search_query, search_track, search_album
 from common_handlers import start_handler, token_handler, receive_token, help_handler, account_handler
 from constants import State, CallbackData
 
@@ -23,7 +23,7 @@ main_conversation = ConversationHandler(
             CallbackQueryHandler(name_handler, pattern="^" + str(CallbackData.ADD_USER.value) + "$"),
             CallbackQueryHandler(token_handler, pattern="^" + str(CallbackData.UPDATE_TOKEN.value) + "$"),
             CallbackQueryHandler(start_handler, pattern="^" + str(CallbackData.MENU.value) + "$"),
-            CallbackQueryHandler(share_track_handler, pattern="^" + str(CallbackData.SEND_MESSAGE.value) + "$"),
+            CallbackQueryHandler(share_music_handler, pattern="^" + str(CallbackData.SEND_MESSAGE.value) + "$"),
         ],
         State.CREATE_GROUP.value: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_name_of_group)],
         State.DELETE_GROUP.value: [
@@ -37,14 +37,18 @@ main_conversation = ConversationHandler(
             CallbackQueryHandler(add_user_to_the_group, pattern="^addUser_"),
             CallbackQueryHandler(start_handler, pattern="^" + str(CallbackData.MENU.value) + "$"),
         ],
-        State.SHARE_TRACK.value: [
-            CallbackQueryHandler(choose_track_handler, pattern="^share_"),
+        State.SHARE_MUSIC.value: [
+            CallbackQueryHandler(choose_music_handler, pattern="^share_"),
             CallbackQueryHandler(show_liked_track, pattern="^" + str(CallbackData.CHOOSE_LIKED_TRACK.value) + "$"),
             CallbackQueryHandler(message_handler, pattern="^chosen_"),
+            CallbackQueryHandler(search_track, pattern="^" + str(CallbackData.SEND_TRACK_REQUEST.value) + "$"),
+            CallbackQueryHandler(search_album, pattern="^" + str(CallbackData.SEND_ALBUM_REQUEST.value) + "$"),
             CallbackQueryHandler(start_handler, pattern="^" + str(CallbackData.MENU.value) + "$"),
         ],
         State.TAKE_MESSAGE.value: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_message)],
         State.ENTER_TOKEN.value: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_token)],
+        State.SEARCH_QUERY_MUSIC.value: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_search_query)],
+
     },
     fallbacks=[CommandHandler("start", start_handler)],
 )

@@ -24,7 +24,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     keyboard = [
         [InlineKeyboardButton("📊 Мой аккаунт", callback_data=str(CallbackData.ACCOUNT.value))],
         [InlineKeyboardButton("👨‍👩‍👦‍👦 Управление группами", callback_data=str(CallbackData.MANAGE_GROUPS.value))],
-        [InlineKeyboardButton("🔉 Поделиться треком", callback_data=str(CallbackData.SEND_MESSAGE.value))],
+        [InlineKeyboardButton("🔉 Поделиться музыкой", callback_data=str(CallbackData.SEND_MESSAGE.value))],
         [InlineKeyboardButton("⚙️ Обновить Токен", callback_data=str(CallbackData.UPDATE_TOKEN.value))],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)

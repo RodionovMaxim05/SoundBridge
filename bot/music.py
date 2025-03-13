@@ -15,8 +15,22 @@ async def get_last_five_liked_track(user_id: int):
     return result
 
 
-async def get_track_info(user_id: int, track_id):
+async def get_track_info(user_id: int, track_id: int):
     token = database.get_token(user_id)
     client = await ClientAsync(token).init()
 
     return (await client.tracks(track_id))[0]
+
+
+async def get_album_info(user_id: int, track_id: int):
+    token = database.get_token(user_id)
+    client = await ClientAsync(token).init()
+
+    return (await client.albums(track_id))[0]
+
+
+async def search_request(user_id: int, query: str, type_of_search: str):
+    token = database.get_token(user_id)
+    client = await ClientAsync(token).init()
+
+    return (await client.search(query)).tracks if type_of_search == "track" else (await client.search(query)).albums

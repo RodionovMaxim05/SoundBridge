@@ -12,6 +12,8 @@ class State(Enum):
     USER_TO_GROUP = auto()
     SHARE_TRACK = auto()
     TAKE_MESSAGE = auto()
+    SHARE_MUSIC = auto()
+    SEARCH_QUERY_MUSIC = auto()
 
 
 class CallbackData(Enum):
@@ -26,3 +28,5 @@ class CallbackData(Enum):
     UPDATE_TOKEN = auto()
     SEND_MESSAGE = auto()
     CHOOSE_LIKED_TRACK = auto()
+    SEND_TRACK_REQUEST = auto()
+    SEND_ALBUM_REQUEST = auto()

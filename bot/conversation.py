@@ -3,6 +3,7 @@ from telegram.ext import ConversationHandler, CommandHandler, CallbackQueryHandl
 from bot.group_management import manage_groups, create_group_handler, delete_group_handler, name_handler, \
     receive_name_of_group, confirm_group_deletion, delete_group_callback_handler, check_name_and_choose_group, \
     add_user_to_the_group
+from bot.history import history_handler, get_my_history, get_group_history, group_history_handler
 from bot.sharing_music import share_music_handler, choose_music_handler, message_handler, show_liked_track, \
     receive_message, receive_search_query, search_track, search_album
 from common_handlers import start_handler, token_handler, receive_token, help_handler, account_handler
@@ -24,6 +25,7 @@ main_conversation = ConversationHandler(
             CallbackQueryHandler(token_handler, pattern="^" + str(CallbackData.UPDATE_TOKEN.value) + "$"),
             CallbackQueryHandler(start_handler, pattern="^" + str(CallbackData.MENU.value) + "$"),
             CallbackQueryHandler(share_music_handler, pattern="^" + str(CallbackData.SEND_MESSAGE.value) + "$"),
+            CallbackQueryHandler(history_handler, pattern="^" + str(CallbackData.HISTORY.value) + "$"),
         ],
         State.CREATE_GROUP.value: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_name_of_group)],
         State.DELETE_GROUP.value: [
@@ -48,6 +50,13 @@ main_conversation = ConversationHandler(
         State.TAKE_MESSAGE.value: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_message)],
         State.ENTER_TOKEN.value: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_token)],
         State.SEARCH_QUERY_MUSIC.value: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_search_query)],
+        State.VIEW_HISTORY.value: [
+            CallbackQueryHandler(history_handler, pattern="^" + str(CallbackData.HISTORY.value) + "$"),
+            CallbackQueryHandler(get_my_history, pattern="^" + str(CallbackData.MY_HISTORY.value) + "$"),
+            CallbackQueryHandler(group_history_handler, pattern="^" + str(CallbackData.GROUP_HISTORY.value) + "$"),
+            CallbackQueryHandler(get_group_history, pattern="^history_"),
+            CallbackQueryHandler(start_handler, pattern="^" + str(CallbackData.MENU.value) + "$"),
+        ]
 
     },
     fallbacks=[CommandHandler("start", start_handler),

@@ -1,7 +1,7 @@
 import logging
 
 import telegram
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, User
 from telegram.ext import ContextTypes, ConversationHandler
 
 from bot.utils import database, send_or_edit_message
@@ -25,6 +25,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         [InlineKeyboardButton("📊 Мой аккаунт", callback_data=str(CallbackData.ACCOUNT.value))],
         [InlineKeyboardButton("👨‍👩‍👦‍👦 Управление группами", callback_data=str(CallbackData.MANAGE_GROUPS.value))],
         [InlineKeyboardButton("🔉 Поделиться музыкой", callback_data=str(CallbackData.SEND_MESSAGE.value))],
+        [InlineKeyboardButton("🗃 История", callback_data=str(CallbackData.HISTORY.value))],
         [InlineKeyboardButton("⚙️ Обновить Токен", callback_data=str(CallbackData.UPDATE_TOKEN.value))],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -41,7 +42,7 @@ async def token_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     logger.info(f"User {update.effective_user.id} in \"token_handler\"")
     await send_or_edit_message(update, text="Введите ваш токен\n\nИли напишить /start для отмены")
-    
+
     return State.ENTER_TOKEN.value
 
 
@@ -89,7 +90,7 @@ async def account_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     await send_or_edit_message(
         update,
-        text=f"<b>Ваш аккаунт\n\nТокен:</b> {token}\n\n📊 <b>Statistics\n\nКоличество треков, которыми поделился:</b> {result.get('count_of_sharing')}\n",
+        text=f"<b>Ваш аккаунт\n\nТокен:</b> {token}\n\n📊 <b>Статистика\n\nКоличество композиций, которыми вы поделились:</b> {result.get('count_of_sharing')}\n",
         reply_markup=reply_markup,
         parse_mode=telegram.constants.ParseMode.HTML
     )
@@ -104,3 +105,20 @@ async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     logger.info(f"User {update.effective_user.id} in \"token_handler\"")
     await update.message.reply_text("Помощи нет.")
+
+
+def group_selection(user: User, cl_data: str) -> InlineKeyboardMarkup:
+    """
+    Creates an inline keyboard markup for selecting a group.
+    """
+
+    groups = database.get_user_groups(user.id)
+
+    keyboard = []
+    for group in groups:
+        keyboard.append([InlineKeyboardButton(f"{group.name}", callback_data=f"{cl_data}_{group.id}")])
+
+    keyboard.append([InlineKeyboardButton(f"🔙 Назад", callback_data=str(CallbackData.MANAGE_GROUPS.value))])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    return reply_markup

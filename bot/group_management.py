@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
 
-from bot.common_handlers import logger
+from bot.common_handlers import logger, group_selection
 from bot.utils import database, format_groups_with_users
 from constants import State, CallbackData
 
@@ -90,14 +90,7 @@ async def delete_group_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     query = update.callback_query
     await query.answer()
 
-    groups = database.get_user_groups(user.id)
-
-    keyboard = []
-    for group in groups:
-        keyboard.append([InlineKeyboardButton(f"{group.name}", callback_data=f"delete_{group.id}")])
-
-    keyboard.append([InlineKeyboardButton(f"🔙 Назад", callback_data=str(CallbackData.MANAGE_GROUPS.value))])
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = group_selection(user, "delete")
 
     await query.edit_message_text("Выберите группы, которую хотите удалить", reply_markup=reply_markup)
     return State.DELETE_GROUP.value

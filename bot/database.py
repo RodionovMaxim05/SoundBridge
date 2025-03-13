@@ -26,7 +26,7 @@ class User(Base):
     count_of_sharing = Column(Integer, default=0)
 
     groups = relationship("Group", secondary=user_group_association, back_populates="users")
-    shared_tracks = relationship("Track", back_populates="shared_by")
+    shared_music = relationship("Music", back_populates="shared_by")
 
 
 class Group(Base):
@@ -36,22 +36,23 @@ class Group(Base):
     name = Column(String, nullable=False)
 
     users = relationship("User", secondary=user_group_association, back_populates="groups")
-    tracks = relationship("Track", back_populates="group")
+    music = relationship("Music", back_populates="group")
 
 
-class Track(Base):
-    __tablename__ = 'Tracks'
+class Music(Base):
+    __tablename__ = 'Music'
 
     id = Column(Integer, primary_key=True)
     yandex_id = Column(Integer, nullable=False)  # Yandex Music track id
-    title = Column(String, nullable=False)  # Artist and title of track
+    title = Column(String, nullable=False)  # Artist and title of music
+    type = Column(String, nullable=False)  # Track or album
     count_of_likes = Column(Integer, default=0)
 
     user_id = Column(Integer, ForeignKey('Users.id'))
-    shared_by = relationship("User", back_populates="shared_tracks")
+    shared_by = relationship("User", back_populates="shared_music")
 
     group_id = Column(Integer, ForeignKey('Group.id'))
-    group = relationship("Group", back_populates="tracks")
+    group = relationship("Group", back_populates="music")
 
 
 class Database:
@@ -98,6 +99,14 @@ class Database:
         user = session.query(User).filter(User.id == user_id).first()
         user.count_of_sharing += 1
 
+    def get_user_sharing(self, user_id: int):
+        user = session.query(User).filter(User.id == user_id).first()
+        return user.shared_music
+
+    def get_username(self, user_id: int) -> str:
+        user = session.query(User).filter(User.id == user_id).first()
+        return str(user.name)
+
     # Group functions
 
     def create_group(self, name: str, user_id: int) -> bool:
@@ -136,8 +145,12 @@ class Database:
         else:
             return False
 
-    # Track functions
+    def get_group_sharing(self, group_id: int):
+        group = session.query(Group).filter(Group.id == group_id).first()
+        return group.music
 
-    def insert_track(self, track: Track, user_id: Integer, group_id: Integer) -> None:
-        session.add(track)
+    # Music functions
+
+    def insert_music(self, track_id: int, title: str, type: str, user_id: Integer, group_id: Integer) -> None:
+        session.add(Music(yandex_id=track_id, title=title, type=type, user_id=user_id, group_id=group_id))
         session.commit()

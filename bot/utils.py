@@ -67,5 +67,5 @@ def format_message(username: str, user_message: str, music_info: Track, type_of_
     """
 
     return (
-        f"<a href=\"{make_url_for_music(music_info, type_of_search)}\">{music_info.artists[0].name} - {music_info.title}</a>\n\n"
+        f"<a href=\"{make_url_for_music(music_info, type_of_search)}\">{', '.join(artist.name for artist in music_info.artists)} — {music_info.title}</a>\n\n"
         f"От {username}:\n<blockquote>{user_message}</blockquote>")

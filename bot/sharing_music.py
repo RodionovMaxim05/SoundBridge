@@ -3,7 +3,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.error import TelegramError
 from telegram.ext import ContextTypes
 
-from bot.common_handlers import logger
+from bot.common_handlers import logger, group_selection
 from bot.music import get_last_five_liked_track, get_track_info, search_request, get_album_info
 from bot.utils import database, format_users_of_group, \
     fix_yandex_image_url, format_message, send_or_edit_message
@@ -20,13 +20,7 @@ async def share_music_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     query = update.callback_query
     await query.answer()
 
-    groups = database.get_user_groups(user.id)
-
-    keyboard = []
-    for group in groups:
-        keyboard.append([InlineKeyboardButton(f"{group.name}", callback_data=f"share_{group.id}")])
-    keyboard.append([InlineKeyboardButton(f"🔙 Назад", callback_data=str(CallbackData.MENU.value))])
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = group_selection(user, "share")
 
     await query.edit_message_text("Выберите группу, с которой хотите поделиться", reply_markup=reply_markup)
     return State.SHARE_MUSIC.value
@@ -93,7 +87,8 @@ async def show_liked_track(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return await handle_error_with_back_button(update, str(e))
 
     keyboard = [
-        [InlineKeyboardButton(f"{track.artists[0].name} - {track.title}", callback_data=f"chosen_{track.id}")]
+        [InlineKeyboardButton(f"{', '.join(artist.name for artist in track.artists)} — {track.title}",
+                              callback_data=f"chosen_{track.id}")]
         for track in liked_tracks
     ]
     keyboard.append([InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))])
@@ -152,7 +147,7 @@ async def receive_search_query(update: Update, context: ContextTypes.DEFAULT_TYP
     except ValueError as e:
         return await handle_error_with_back_button(update, str(e))
 
-    count_of_results = min(result_of_search.total, 7)
+    count_of_results = min(result_of_search.total + 1, 7) - 1
 
     keyboard = []
     for i in range(count_of_results):
@@ -212,7 +207,10 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     group_id = context.user_data.get("share_group_id")
     music_id = context.user_data["share_id"]
-    type_of_search = context.user_data["search"]
+    try:
+        type_of_search = context.user_data["search"]
+    except:
+        type_of_search = "track"
 
     database.incr_count_of_sharing(user.id)
 
@@ -220,15 +218,19 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     music_info = await get_track_info(user.id, music_id) if type_of_search == "track" else await get_album_info(user.id,
                                                                                                                 music_id)
 
-    await  send_message_to_users(update, context.bot, users=database.get_group_users(group_id),
-                                 message_text=format_message(user.name, user_message, music_info, type_of_search),
-                                 photo=fix_yandex_image_url(music_info.cover_uri),
-                                 parse_mode=telegram.constants.ParseMode.HTML)
+    await send_message_to_users(update, context.bot, users=database.get_group_users(group_id),
+                                message_text=format_message(user.name, user_message, music_info, type_of_search),
+                                photo=fix_yandex_image_url(music_info.cover_uri),
+                                parse_mode=telegram.constants.ParseMode.HTML)
 
     keyboard = [
         [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+    database.insert_music(track_id=music_id,
+                          title=f"{', '.join(artist.name for artist in music_info.artists)} — {music_info.title}",
+                          type=type_of_search,
+                          user_id=user.id, group_id=group_id)
     await update.message.reply_text("✅ Сообщение успешно обновлен", reply_markup=reply_markup)
 
     return State.START.value

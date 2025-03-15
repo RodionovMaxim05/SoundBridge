@@ -1,5 +1,5 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, ConversationHandler
+from telegram.ext import ContextTypes
 
 from bot.common_handlers import logger, group_selection
 from bot.utils import database, format_groups_with_users
@@ -66,18 +66,16 @@ async def receive_name_of_group(update: Update, context: ContextTypes.DEFAULT_TY
     logger.info(f"User {user.id} in \"receive_name_of_group\"")
     user_message = update.message.text
 
-    if database.create_group(user_message, user.id):
-        keyboard = [
-            [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))],
-        ]
+    database.create_group(user_message, user.id)
 
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(f"✅ Группа \"{user_message}\" успешно создана", reply_markup=reply_markup)
+    keyboard = [
+        [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))],
+    ]
 
-        return State.START.value
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(f"✅ Группа \"{user_message}\" успешно создана", reply_markup=reply_markup)
 
-    await update.message.reply_text("Что-то пошло не так :(")
-    return ConversationHandler.END
+    return State.START.value
 
 
 async def delete_group_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -131,18 +129,16 @@ async def delete_group_callback_handler(update: Update, context: ContextTypes.DE
     callback_data = query.data
     group_id = int(callback_data.split("_")[1])
 
-    if database.delete_group(group_id):
-        keyboard = [
-            [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))],
-        ]
+    database.delete_group(group_id)
 
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text("✅ Группа успешно удалена", reply_markup=reply_markup)
+    keyboard = [
+        [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))],
+    ]
 
-        return State.START.value
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text("✅ Группа успешно удалена", reply_markup=reply_markup)
 
-    await update.message.reply_text("Что-то пошло не так :(")
-    return ConversationHandler.END
+    return State.START.value
 
 
 async def name_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -197,7 +193,7 @@ async def check_name_and_choose_group(update: Update, context: ContextTypes.DEFA
 
 async def add_user_to_the_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
-    Adds the selected user to the chosen group. Notifies the user of success or failure.
+    Adds the selected user to the chosen group.
     """
 
     logger.info(f"User {update.effective_user.id} in \"add_user_to_the_group\"")
@@ -208,16 +204,15 @@ async def add_user_to_the_group(update: Update, context: ContextTypes.DEFAULT_TY
     group_id = int(callback_data.split("_")[1])
     username = context.user_data["add_user"]
 
-    if database.add_user_to_group(group_id, username):
-        keyboard = [
-            [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))],
-        ]
+    database.add_user_to_group(group_id, username)
 
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text(f"✅ Пользователь {username} успешно добавлен в группу {group_id}",
-                                      reply_markup=reply_markup)
+    keyboard = [
+        [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))],
+    ]
 
-        return State.START.value
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(
+        f"✅ Пользователь {username} успешно добавлен в группу {database.get_group_name(group_id)}",
+        reply_markup=reply_markup)
 
-    await update.message.reply_text("Что-то пошло не так :(")
-    return ConversationHandler.END
+    return State.START.value

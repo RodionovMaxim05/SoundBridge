@@ -1,12 +1,12 @@
 import telegram
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot, InputMediaPhoto
 from telegram.error import TelegramError
 from telegram.ext import ContextTypes
 
 from bot.common_handlers import logger, group_selection
 from bot.music import get_last_five_liked_track, get_track_info, search_request, get_album_info
 from bot.utils import database, format_users_of_group, \
-    fix_yandex_image_url, format_message, send_or_edit_message
+    fix_yandex_image_uri, format_message, send_or_edit_message, format_track_name
 from constants import State, CallbackData
 
 
@@ -21,7 +21,6 @@ async def share_music_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     await query.answer()
 
     reply_markup = group_selection(user, "share")
-
     await query.edit_message_text("Выберите группу, с которой хотите поделиться", reply_markup=reply_markup)
     return State.SHARE_MUSIC.value
 
@@ -67,7 +66,8 @@ async def handle_error_with_back_button(
 
     keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data=back_button_callback_data)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await send_or_edit_message(update, text=error_message, reply_markup=reply_markup)
+    await send_or_edit_message(update, context, text=error_message, reply_markup=reply_markup)
+
     return state
 
 
@@ -110,6 +110,7 @@ async def search_music(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     await query.answer()
 
     await query.edit_message_text("Введите ваш поисковый запрос\n\nИли напишить /start для отмены")
+
     return State.SEARCH_QUERY_MUSIC.value
 
 
@@ -149,13 +150,14 @@ async def receive_search_query(update: Update, context: ContextTypes.DEFAULT_TYP
 
     count_of_results = min(result_of_search.total + 1, 7) - 1
 
-    keyboard = []
-    for i in range(count_of_results):
-        keyboard.append([InlineKeyboardButton(
+    keyboard = [
+        [InlineKeyboardButton(
             f"{result_of_search.results[i].artists[0].name} - {result_of_search.results[i].title}",
-            callback_data=f"chosen_{result_of_search.results[i].id}")])
+            callback_data=f"chosen_{result_of_search.results[i].id}")]
+        for i in range(count_of_results)
+    ]
     keyboard.append([
-        InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))
+        InlineKeyboardButton("🔙 Назад", callback_data=f"share_{context.user_data["share_group_id"]}")
     ])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text("Выберите подходящий вариант", reply_markup=reply_markup)
@@ -168,30 +170,48 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     Handles the selection of a music and prompts the user to share their emotions about it.
     """
 
-    logger.info(f"User {update.effective_user.id} in \"message_handler\"")
+    user = update.effective_user
+    logger.info(f"User {user.id} in \"message_handler\"")
     query = update.callback_query
     await query.answer()
 
     callback_data = query.data
-    music_id = int(callback_data.split("_")[1])
-    context.user_data["share_id"] = music_id
+    yandex_id = int(callback_data.split("_")[1])
+    context.user_data["yandex_id"] = yandex_id
 
-    await query.edit_message_text("Поделитесь эмоциями об этом треке\n\nИли напишить /start для отмены")
+    type_of_search = context.user_data.get("search", "track")
+    music_info = await get_track_info(user.id, yandex_id) if type_of_search == "track" else await get_album_info(
+        user.id, yandex_id)
+
+    caption = format_track_name(music_info,
+                                type_of_search) + "Поделитесь эмоциями об этом треке\n\nИли напишите /start для отмены"
+    await query.edit_message_media(
+        media=InputMediaPhoto(media=fix_yandex_image_uri(music_info.cover_uri), caption=caption,
+                              parse_mode=telegram.constants.ParseMode.HTML)
+    )
+
     return State.TAKE_MESSAGE.value
 
 
-async def send_message_to_users(update: Update, bot: Bot, users: any, message_text: str, photo: str,
+async def send_message_to_users(update: Update, bot: Bot, music_id: any, users: any, message_text: str,
+                                photo: str,
                                 parse_mode: str = None) -> None:
     """
     Sends a message to a list of users by their user IDs.
     """
+
+    keyboard = [
+        [InlineKeyboardButton(f"{index}", callback_data=f"mark_{index}_{music_id}") for index in range(6)]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
     for user in users:
         if user.id != update.effective_user.id:  # Avoid sending the message to the sender
             try:
                 await bot.send_photo(chat_id=user.id, photo=photo,
                                      caption=message_text,
-                                     parse_mode=parse_mode)
+                                     parse_mode=parse_mode,
+                                     reply_markup=reply_markup)
                 logger.info(f"Message sent to user {user.id}.")
             except TelegramError as e:
                 logger.error(f"Failed to send message to user {user.id}: {e}")
@@ -206,31 +226,54 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     logger.info(f"User {user.id} in \"receive_message\"")
 
     group_id = context.user_data.get("share_group_id")
-    music_id = context.user_data["share_id"]
-    try:
-        type_of_search = context.user_data["search"]
-    except:
-        type_of_search = "track"
+    yandex_id = context.user_data["yandex_id"]
+    type_of_search = context.user_data.get("search", "track")
 
     database.incr_count_of_sharing(user.id)
 
     user_message = update.message.text
-    music_info = await get_track_info(user.id, music_id) if type_of_search == "track" else await get_album_info(user.id,
-                                                                                                                music_id)
+    music_info = await get_track_info(user.id, yandex_id) if type_of_search == "track" else await get_album_info(
+        user.id,
+        yandex_id)
 
-    await send_message_to_users(update, context.bot, users=database.get_group_users(group_id),
+    photo_uri = fix_yandex_image_uri(music_info.cover_uri)
+
+    music_id = database.insert_music(yandex_id=yandex_id,
+                                     title=f"{', '.join(artist.name for artist in music_info.artists)} — {music_info.title}",
+                                     message=user_message,
+                                     type=type_of_search,
+                                     photo_uri=photo_uri,
+                                     user_id=user.id, group_id=group_id)
+
+    await send_message_to_users(update, context.bot, music_id=music_id, users=database.get_group_users(group_id),
                                 message_text=format_message(user.name, user_message, music_info, type_of_search),
-                                photo=fix_yandex_image_url(music_info.cover_uri),
+                                photo=photo_uri,
                                 parse_mode=telegram.constants.ParseMode.HTML)
 
     keyboard = [
         [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    database.insert_music(track_id=music_id,
-                          title=f"{', '.join(artist.name for artist in music_info.artists)} — {music_info.title}",
-                          type=type_of_search,
-                          user_id=user.id, group_id=group_id)
     await update.message.reply_text("✅ Сообщение успешно обновлен", reply_markup=reply_markup)
 
     return State.START.value
+
+
+async def mark_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """
+    Handles the user's response to the inline keyboard.
+    """
+
+    query = update.callback_query
+    await query.answer()
+
+    callback_data = query.data
+    mark = int(callback_data.split("_")[1])
+    music_id = int(callback_data.split("_")[2])
+
+    user = query.from_user
+    logger.info(f"User {user.id} selected mark {mark}")
+
+    database.make_new_mark(music_id, mark)
+
+    await query.delete_message()

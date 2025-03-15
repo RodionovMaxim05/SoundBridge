@@ -46,7 +46,10 @@ class Music(Base):
     yandex_id = Column(Integer, nullable=False)  # Yandex Music track id
     title = Column(String, nullable=False)  # Artist and title of music
     type = Column(String, nullable=False)  # Track or album
-    count_of_likes = Column(Integer, default=0)
+    message = Column(String, nullable=False)  # Text from user
+    photo_uri = Column(String, nullable=False)
+    average_mark = Column(Integer, default=0)
+    count_of_ratings = Column(Integer, default=0)
 
     user_id = Column(Integer, ForeignKey('Users.id'))
     shared_by = relationship("User", back_populates="shared_music")
@@ -70,11 +73,10 @@ class Database:
             session.add(User(id=user_id, name=user_name))
             session.commit()
 
-    def update_user_token(self, user_id: int, new_token: str) -> bool:  # TODO add token validity check
+    def update_user_token(self, user_id: int, new_token: str):  # TODO add token validity check
         user = session.query(User).filter(User.id == user_id).first()
         user.token = new_token
         session.commit()
-        return True
 
     def get_user_statistic(self, user_id: int) -> dict:
         user = session.query(User).filter(User.id == user_id).first()
@@ -109,41 +111,31 @@ class Database:
 
     # Group functions
 
-    def create_group(self, name: str, user_id: int) -> bool:
+    def create_group(self, name: str, user_id: int):
         group = Group(name=name)
         user = session.query(User).filter(User.id == user_id).first()
         group.users = [user]
         session.add(group)
         session.commit()
-        return True
 
     def get_group_name(self, group_id: int) -> str:
         group = session.query(Group).filter(Group.id == group_id).first()
         return str(group.name)
 
-    def delete_group(self, group_id: int) -> bool:
+    def delete_group(self, group_id: int):
         group = session.query(Group).filter(Group.id == group_id).first()
-        if not group:
-            return False
-
         session.delete(group)
         session.commit()
-        return True
 
     def get_group_users(self, group_id: int):
         group = session.query(Group).filter(Group.id == group_id).first()
         return group.users
 
-    def add_user_to_group(self, group_id: int, user_name: str) -> bool:
+    def add_user_to_group(self, group_id: int, user_name: str):
         group = session.query(Group).filter(Group.id == group_id).first()
-
         user = session.query(User).filter(User.name == user_name).first()
-        if user:
-            group.users.extend([user])
-            session.commit()
-            return True
-        else:
-            return False
+        group.users.extend([user])
+        session.commit()
 
     def get_group_sharing(self, group_id: int):
         group = session.query(Group).filter(Group.id == group_id).first()
@@ -151,6 +143,20 @@ class Database:
 
     # Music functions
 
-    def insert_music(self, track_id: int, title: str, type: str, user_id: Integer, group_id: Integer) -> None:
-        session.add(Music(yandex_id=track_id, title=title, type=type, user_id=user_id, group_id=group_id))
+    def insert_music(self, yandex_id: int, title: str, type: str, message: str, photo_uri: str, user_id: Integer,
+                     group_id: Integer):
+        new_music = Music(yandex_id=yandex_id, title=title, type=type, message=message, photo_uri=photo_uri,
+                          user_id=user_id,
+                          group_id=group_id)
+        session.add(new_music)
+        session.commit()
+
+        return new_music.id
+
+    def make_new_mark(self, music_id: int, mark: int):
+        music = session.query(Music).filter(Music.id == music_id).first()
+        new_mark = (music.average_mark * music.count_of_ratings + mark) / (music.count_of_ratings + 1)
+        music.count_of_ratings += 1
+        music.average_mark = new_mark
+
         session.commit()

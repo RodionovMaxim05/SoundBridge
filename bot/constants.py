@@ -33,4 +33,6 @@ class CallbackData(Enum):
     SEND_ALBUM_REQUEST = auto()
     HISTORY = auto()
     MY_HISTORY = auto()
+    MY_HISTORY_COR = auto()
     GROUP_HISTORY = auto()
+    GROUP_HISTORY_COR = auto()

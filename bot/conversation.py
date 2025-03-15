@@ -3,9 +3,11 @@ from telegram.ext import ConversationHandler, CommandHandler, CallbackQueryHandl
 from bot.group_management import manage_groups, create_group_handler, delete_group_handler, name_handler, \
     receive_name_of_group, confirm_group_deletion, delete_group_callback_handler, check_name_and_choose_group, \
     add_user_to_the_group
-from bot.history import history_handler, get_my_history, get_group_history, group_history_handler
+from bot.history import history_handler, handle_carousel_navigation, group_history_list_handler, \
+    group_history_carousel_handler, display_my_history_list, display_my_history_carousel, \
+    display_group_history_carousel, display_group_history_list
 from bot.sharing_music import share_music_handler, choose_music_handler, message_handler, show_liked_track, \
-    receive_message, receive_search_query, search_track, search_album
+    receive_message, receive_search_query, search_track, search_album, mark_callback_handler
 from common_handlers import start_handler, token_handler, receive_token, help_handler, account_handler
 from constants import State, CallbackData
 
@@ -52,9 +54,16 @@ main_conversation = ConversationHandler(
         State.SEARCH_QUERY_MUSIC.value: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_search_query)],
         State.VIEW_HISTORY.value: [
             CallbackQueryHandler(history_handler, pattern="^" + str(CallbackData.HISTORY.value) + "$"),
-            CallbackQueryHandler(get_my_history, pattern="^" + str(CallbackData.MY_HISTORY.value) + "$"),
-            CallbackQueryHandler(group_history_handler, pattern="^" + str(CallbackData.GROUP_HISTORY.value) + "$"),
-            CallbackQueryHandler(get_group_history, pattern="^history_"),
+            CallbackQueryHandler(display_my_history_list, pattern="^" + str(CallbackData.MY_HISTORY.value) + "$"),
+            CallbackQueryHandler(display_my_history_carousel,
+                                 pattern="^" + str(CallbackData.MY_HISTORY_COR.value) + "$"),
+            CallbackQueryHandler(handle_carousel_navigation, pattern="^(prev|next)_\\d+$"),
+            CallbackQueryHandler(group_history_list_handler, pattern="^" + str(CallbackData.GROUP_HISTORY.value) + "$"),
+            CallbackQueryHandler(group_history_carousel_handler,
+                                 pattern="^" + str(CallbackData.GROUP_HISTORY_COR.value) + "$"),
+            CallbackQueryHandler(history_handler, pattern="^" + str(CallbackData.MANAGE_GROUPS.value) + "$"),
+            CallbackQueryHandler(display_group_history_list, pattern="^listHistory"),
+            CallbackQueryHandler(display_group_history_carousel, pattern="^carouselHistory"),
             CallbackQueryHandler(start_handler, pattern="^" + str(CallbackData.MENU.value) + "$"),
         ]
 
@@ -70,4 +79,5 @@ def register_handlers(application):
     """
 
     application.add_handler(CommandHandler('help', help_handler))
+    application.add_handler(CallbackQueryHandler(mark_callback_handler, pattern="^mark_"))
     application.add_handler(main_conversation)

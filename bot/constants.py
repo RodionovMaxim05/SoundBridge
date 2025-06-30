@@ -11,6 +11,7 @@ class State(Enum):
     TAKE_USERNAME = auto()
     USER_TO_GROUP = auto()
     SHARE_TRACK = auto()
+    RATE_MUSIC = auto()
     TAKE_MESSAGE = auto()
     SHARE_MUSIC = auto()
     SEARCH_QUERY_MUSIC = auto()
@@ -36,3 +37,5 @@ class CallbackData(Enum):
     MY_HISTORY_COR = auto()
     GROUP_HISTORY = auto()
     GROUP_HISTORY_COR = auto()
+    CREATE_PLAYLIST = auto()
+    RATE_TRACK = auto()

@@ -1,10 +1,20 @@
 import telegram
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    InputMediaPhoto,
+)
 from telegram.ext import ContextTypes
 
 from bot.common_handlers import logger, group_selection
 from bot.music import get_track_info, get_album_info
-from bot.utils import database, make_url_for_music, fix_yandex_image_uri, send_or_edit_message
+from bot.utils import (
+    database,
+    make_url_for_music,
+    fix_yandex_image_uri,
+    send_or_edit_message,
+)
 from constants import State, CallbackData
 
 
@@ -14,22 +24,41 @@ async def history_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     """
 
     user = update.effective_user
-    logger.info(f"User {user.id} in \"history_handler\"")
+    logger.info(f'User {user.id} in "history_handler"')
     query = update.callback_query
     await query.answer()
 
     keyboard = [
-        [InlineKeyboardButton("🚮 Моя история списком", callback_data=str(CallbackData.MY_HISTORY.value)),
-         InlineKeyboardButton("🎠 Моя история каруселью", callback_data=str(CallbackData.MY_HISTORY_COR.value))],
-        [InlineKeyboardButton("👨‍👩‍👦‍👦 История группы", callback_data=str(CallbackData.GROUP_HISTORY.value)),
-         InlineKeyboardButton("🎡 История группы каруселью",
-                              callback_data=str(CallbackData.GROUP_HISTORY_COR.value))],
+        [
+            InlineKeyboardButton(
+                "🚮 Моя история списком",
+                callback_data=str(CallbackData.MY_HISTORY.value),
+            ),
+            InlineKeyboardButton(
+                "🎠 Моя история каруселью",
+                callback_data=str(CallbackData.MY_HISTORY_COR.value),
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "👨‍👩‍👦‍👦 История группы",
+                callback_data=str(CallbackData.GROUP_HISTORY.value),
+            ),
+            InlineKeyboardButton(
+                "🎡 История группы каруселью",
+                callback_data=str(CallbackData.GROUP_HISTORY_COR.value),
+            ),
+        ],
         [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await send_or_edit_message(update, context, text="Выберите, чью историю хотите посмотреть",
-                               reply_markup=reply_markup)
+    await send_or_edit_message(
+        update,
+        context,
+        text="Выберите, чью историю хотите посмотреть",
+        reply_markup=reply_markup,
+    )
     return State.VIEW_HISTORY.value
 
 
@@ -40,11 +69,23 @@ def get_carousel_keyboard(current_index, total_items):
 
     keyboard = []
     if current_index > 0:
-        keyboard.append(InlineKeyboardButton("⬅️", callback_data=f"prev_{current_index}"))
+        keyboard.append(
+            InlineKeyboardButton("⬅️", callback_data=f"prev_{current_index}")
+        )
     if current_index < total_items - 1:
-        keyboard.append(InlineKeyboardButton("➡️", callback_data=f"next_{current_index}"))
+        keyboard.append(
+            InlineKeyboardButton("➡️", callback_data=f"next_{current_index}")
+        )
     return InlineKeyboardMarkup(
-        [keyboard, [InlineKeyboardButton(f"🔙 Назад", callback_data=str(CallbackData.HISTORY.value))]])
+        [
+            keyboard,
+            [
+                InlineKeyboardButton(
+                    f"🔙 Назад", callback_data=str(CallbackData.HISTORY.value)
+                )
+            ],
+        ]
+    )
 
 
 async def simple_format_history_music(music, is_group: bool, index: int) -> str:
@@ -52,12 +93,15 @@ async def simple_format_history_music(music, is_group: bool, index: int) -> str:
     Formats a single music entry into a clickable link with user or group information.
     """
 
-    music_info = await get_track_info(music.user_id,
-                                      music.yandex_id) if music.type == "track" else await get_album_info(music.user_id,
-                                                                                                          music.yandex_id)
-    music_url = make_url_for_music(music_info, music.type)
+    music_info = (
+        await get_track_info(music.user_id, music.yandex_id)
+        if music.type_of_music == "track"
+        else await get_album_info(music.user_id, music.yandex_id)
+    )
 
-    text = f"{index}. <a href=\"{music_url}\">{music.title}</a> | Ср. оценка: {music.average_mark} "
+    music_url = make_url_for_music(music_info, music.type_of_music)
+
+    text = f'{index}. <a href="{music_url}">{music.title}</a> | Ср. оценка: {music.average_mark} '
     if is_group:
         text += f"| Пользователь: {database.get_username(music.user_id)}"
     else:
@@ -66,21 +110,35 @@ async def simple_format_history_music(music, is_group: bool, index: int) -> str:
     return text
 
 
-async def format_music_entry(music, is_group: bool, index: int) -> str:
+async def format_music_entry(music, is_group: bool, index: int = -1) -> str:
     """
     Formats a single music entry into a clickable link with user or group information.
     """
 
-    music_info = await get_track_info(music.user_id,
-                                      music.yandex_id) if music.type == "track" else await get_album_info(music.user_id,
-                                                                                                          music.yandex_id)
-    music_url = make_url_for_music(music_info, music.type)
+    music_info = (
+        await get_track_info(music.user_id, music.yandex_id)
+        if music.type_of_music == "track"
+        else await get_album_info(music.user_id, music.yandex_id)
+    )
+    music_url = make_url_for_music(music_info, music.type_of_music)
 
-    text = f"{index}. <a href=\"{music_url}\">{music.title}</a>\n\n<b>Ср. оценка: {music.average_mark}</b>\n\n"
+    mark = music.average_mark if music.count_of_ratings > 0 else "Оценок нет"
+    if index != -1:
+        text = f'{index}. <a href="{music_url}">{music.title}</a>\n\n<b>Ср. оценка: {mark}</b>\n\n'
+    else:
+        text = (
+            f'<a href="{music_url}">{music.title}</a>\n\n<b>Ср. оценка: {mark}</b>\n\n'
+            f"Пользователь: {database.get_username(music.user_id)}\n"
+        )
+
     if is_group:
         text += f"Пользователь: {database.get_username(music.user_id)}\n<blockquote>{music.message}</blockquote>"
     else:
-        text += f"Группа: {database.get_group_name(music.group_id)}\n<blockquote>{music.message}</blockquote>"
+        group_name = database.get_group_name(music.group_id)
+        if group_name is None:
+            text += f"Группа: Без группы\n<blockquote>{music.message}</blockquote>"
+        else:
+            text += f"Группа: {database.get_group_name(music.group_id)}\n<blockquote>{music.message}</blockquote>"
 
     return text
 
@@ -113,8 +171,12 @@ async def display_carousel(query, history: list, is_group: bool) -> None:
     reply_markup = get_carousel_keyboard(current_index, len(history))
 
     await query.edit_message_media(
-        media=InputMediaPhoto(media=fix_yandex_image_uri(music.photo_uri), caption=text,
-                              parse_mode=telegram.constants.ParseMode.HTML), reply_markup=reply_markup
+        media=InputMediaPhoto(
+            media=fix_yandex_image_uri(music.photo_uri),
+            caption=text,
+            parse_mode=telegram.constants.ParseMode.HTML,
+        ),
+        reply_markup=reply_markup,
     )
 
 
@@ -124,42 +186,75 @@ async def display_list(query, history: list, text: str, is_group: bool) -> None:
     """
 
     text += "\n".join(
-        [await simple_format_history_music(music, is_group=is_group, index=(index + 1)) for index, music in
-         enumerate(history)]
+        [
+            await simple_format_history_music(
+                music, is_group=is_group, index=(index + 1)
+            )
+            for index, music in enumerate(history)
+        ]
     )
-    keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.HISTORY.value))]]
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "🔙 Назад", callback_data=str(CallbackData.HISTORY.value)
+            )
+        ]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await query.edit_message_text(text, reply_markup=reply_markup, parse_mode=telegram.constants.ParseMode.HTML,
-                                  disable_web_page_preview=True)
+    await query.edit_message_text(
+        text,
+        reply_markup=reply_markup,
+        parse_mode=telegram.constants.ParseMode.HTML,
+        disable_web_page_preview=True,
+    )
 
 
-async def get_history(update: Update, context: ContextTypes.DEFAULT_TYPE, is_carousel: bool, is_group: bool) -> int:
+async def get_history(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    is_carousel: bool,
+    is_group: bool,
+) -> int:
     """
     Displays the sharing history either as a carousel or a list.
     """
 
+    logger.info(f'User {update.effective_user.id} in "get_history"')
     query = update.callback_query
     await query.answer()
 
     history, text = await get_history_data(update, is_group)
     if not history:
-        await query.edit_message_text("История пуста.")
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "🔙 Назад", callback_data=str(CallbackData.MENU.value)
+                )
+            ],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text("Ваша история пуста.", reply_markup=reply_markup)
         return State.VIEW_HISTORY.value
 
     if is_carousel:
         await display_carousel(query, history, is_group)
+        context.user_data["is_group"] = is_group
+        context.user_data["group_sharing_history"] = history
     else:
         await display_list(query, history, text, is_group)
 
     return State.VIEW_HISTORY.value
 
 
-async def handle_carousel_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def handle_carousel_navigation(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
     """
     Handles navigation through the carousel.
     """
 
+    logger.info(f'User {update.effective_user.id} in "handle_carousel_navigation"')
     query = update.callback_query
     await query.answer()
 
@@ -167,7 +262,7 @@ async def handle_carousel_navigation(update: Update, context: ContextTypes.DEFAU
     direction, current_index = callback_data.split("_")
     current_index = int(current_index)
 
-    history = database.get_user_sharing(update.effective_user.id)
+    history = context.user_data["group_sharing_history"]
 
     if direction == "prev":
         current_index -= 1
@@ -175,82 +270,105 @@ async def handle_carousel_navigation(update: Update, context: ContextTypes.DEFAU
         current_index += 1
 
     music = history[current_index]
-    text = await format_music_entry(music, is_group=False, index=current_index + 1)
+    text = await format_music_entry(
+        music, is_group=context.user_data["is_group"], index=current_index + 1
+    )
     reply_markup = get_carousel_keyboard(current_index, len(history))
 
     await query.edit_message_media(
-        media=InputMediaPhoto(media=fix_yandex_image_uri(music.photo_uri), caption=text,
-                              parse_mode=telegram.constants.ParseMode.HTML), reply_markup=reply_markup
+        media=InputMediaPhoto(
+            media=fix_yandex_image_uri(music.photo_uri),
+            caption=text,
+            parse_mode=telegram.constants.ParseMode.HTML,
+        ),
+        reply_markup=reply_markup,
     )
 
     return State.VIEW_HISTORY.value
 
 
-async def group_history_handler(update: Update, context: ContextTypes.DEFAULT_TYPE, cl_data) -> int:
+async def group_history_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, cl_data
+) -> int:
     """
     Handles the selection of a group to view its sharing history.
     """
 
     user = update.effective_user
-    logger.info(f"User {user.id} in \"group_history_handler\"")
+    logger.info(f'User {user.id} in "group_history_handler"')
     query = update.callback_query
     await query.answer()
 
     reply_markup = group_selection(user, cl_data)
-    await query.edit_message_text("Выберите группу, историю которой хотите посмотреть", reply_markup=reply_markup)
+    await query.edit_message_text(
+        "Выберите группу, историю которой хотите посмотреть",
+        reply_markup=reply_markup,
+    )
 
     return State.VIEW_HISTORY.value
 
 
-async def group_history_list_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def group_history_list_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """
     Handles the selection of a group to view its sharing history as a list.
     """
 
-    logger.info(f"User {update.effective_user.id} in \"group_history_handler\"")
+    logger.info(f'User {update.effective_user.id} in "group_history_list_handler"')
     await group_history_handler(update, context, "listHistory")
 
 
-async def group_history_carousel_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def group_history_carousel_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """
     Handles the selection of a group to view its sharing history as a carousel.
     """
 
-    logger.info(f"User {update.effective_user.id} in \"group_carousel_history_handler\"")
-    await group_history_handler(update, context, "carouseHistory")
+    logger.info(f'User {update.effective_user.id} in "group_history_carousel_handler"')
+    await group_history_handler(update, context, "carouselHistory")
 
 
-async def display_my_history_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def display_my_history_list(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """
     Displays the user's personal sharing history as a list.
     """
 
-    logger.info(f"User {update.effective_user.id} in \"get_my_history\"")
+    logger.info(f'User {update.effective_user.id} in "display_my_history_list"')
     await get_history(update, context, is_group=False, is_carousel=False)
 
 
-async def display_my_history_carousel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def display_my_history_carousel(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """
     Displays the user's personal sharing history as a carousel.
     """
 
-    logger.info(f"User {update.effective_user.id} in \"get_my_history_carousel\"")
+    logger.info(f'User {update.effective_user.id} in "display_my_history_carousel"')
     await get_history(update, context, is_group=False, is_carousel=True)
 
 
-async def display_group_history_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def display_group_history_list(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """
     Displays the group's sharing history as a list.
     """
 
-    logger.info(f"User {update.effective_user.id} in \"get_group_history\"")
+    logger.info(f'User {update.effective_user.id} in "display_group_history_list"')
     await get_history(update, context, is_group=True, is_carousel=False)
 
 
-async def display_group_history_carousel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def display_group_history_carousel(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """
     Displays the group's sharing history as a carousel.
     """
 
-    logger.info(f"User {update.effective_user.id} in \"get_group_history_carousel\"")
+    logger.info(f'User {update.effective_user.id} in "display_group_history_carousel"')
     await get_history(update, context, is_group=True, is_carousel=True)

@@ -4,7 +4,7 @@ from telegram.ext import ContextTypes
 from yandex_music import Track
 
 from bot.constants import CallbackData
-from database import Database
+from bot.database import Database
 
 database = Database()
 
@@ -16,7 +16,8 @@ def format_groups_with_users(user_id: int) -> str:
 
     user_groups = database.get_user_groups(user_id)
     return "\n\n".join(
-        f"Группа: {group.name}\n\t\t\t\tУчастники: {', '.join(user.name for user in database.get_group_users(group.id))}"
+        f"Группа: {group.name}\n\t\t\t\tУчастники: "
+        f"{', '.join(user.name for user in database.get_group_users(group.id))}"
         for group in user_groups
     )
 
@@ -26,7 +27,10 @@ def format_users_of_group(group_id: int) -> str:
     Formats the information about a group and its members into a readable string.
     """
 
-    return f"Группа: {database.get_group_name(group_id)}\n\t\t\t\tУчастники: {', '.join(user.name for user in database.get_group_users(group_id))}\n\n"
+    return (
+        f"Группа: {database.get_group_name(group_id)}\n\t\t\t\tУчастники: "
+        f"{', '.join(user.name for user in database.get_group_users(group_id))}\n\n"
+    )
 
 
 async def send_or_edit_message(
@@ -55,6 +59,7 @@ async def send_or_edit_message(
                 parse_mode=parse_mode,
                 disable_web_page_preview=True,
             )
+    # pylint: disable=W0702
     except:
         query = update.callback_query
         await query.answer()
@@ -95,7 +100,11 @@ def format_track_name(music_info: Track, type_of_search: str) -> str:
     Formats a message with music information.
     """
 
-    return f"<a href=\"{make_url_for_music(music_info, type_of_search)}\">{', '.join(artist.name for artist in music_info.artists)} — {music_info.title}</a>\n\n"
+    return (
+        f'<a href="{make_url_for_music(music_info, type_of_search)}">'
+        f"{', '.join(artist.name for artist in music_info.artists)} — "
+        f"{music_info.title}</a>\n\n"
+    )
 
 
 def format_message(
@@ -145,7 +154,7 @@ def build_paginated_keyboard(data: list, page: int):
 
     keyboard.append(nav_buttons)
     keyboard.append(
-        [InlineKeyboardButton(f"🔙 Назад", callback_data=str(CallbackData.MENU.value))]
+        [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))]
     )
 
     return InlineKeyboardMarkup(keyboard), page

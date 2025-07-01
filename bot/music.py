@@ -13,19 +13,24 @@ async def get_yandex_music_client(user_id: int):
     token = database.get_token(user_id)
     if not token:
         raise ValueError(
-            "❌ У вас нет токена для доступа в Яндекс Музыку.\n\nПожалуйста, обновите его, используя /token"
+            "❌ У вас нет токена для доступа в Яндекс Музыку.\n\nПожалуйста, обновите его, "
+            "используя /token"
         )
 
     try:
         client = await ClientAsync(token).init()
         return client
-    except yandex_music.exceptions.YandexMusicError:
+    except yandex_music.exceptions.YandexMusicError as e:
         raise ValueError(
             "❌ Ваш токен Яндекс Музыки неверен.\n\nПожалуйста, обновите его, используя /token"
-        )
+        ) from e
 
 
 async def get_last_n_liked_track(user_id: int, n: int):
+    """
+    Returns the last n liked tracks for a user.
+    """
+
     client = await get_yandex_music_client(user_id)
 
     five_liked_short_track = (await client.users_likes_tracks())[:n]
@@ -37,18 +42,30 @@ async def get_last_n_liked_track(user_id: int, n: int):
 
 
 async def get_track_info(user_id: int, track_id: int):
+    """
+    Returns info about a specific track by its Yandex ID.
+    """
+
     client = await get_yandex_music_client(user_id)
 
     return (await client.tracks(track_id))[0]
 
 
 async def get_album_info(user_id: int, track_id: int):
+    """
+    Returns info about a specific album by its Yandex ID.
+    """
+
     client = await get_yandex_music_client(user_id)
 
     return (await client.albums(track_id))[0]
 
 
 async def search_request(user_id: int, query: str, type_of_search: str):
+    """
+    Performs a search on Yandex Music for "track" or "album".
+    """
+
     client = await get_yandex_music_client(user_id)
 
     return (
@@ -59,12 +76,20 @@ async def search_request(user_id: int, query: str, type_of_search: str):
 
 
 async def get_group_track_list(user_id: int, group_id: int):
+    """
+    Returns all tracks from a group`s playlist.
+    """
+
     client = await get_yandex_music_client(user_id)
     playlist = database.get_playlist(user_id, group_id)
     return (await client.users_playlists(playlist.kind)).tracks
 
 
 async def update_tracks(client: ClientAsync, playlist, user_id: int, group_id: int):
+    """
+    Syncs playlist in Yandex Music with new tracks added to the group.
+    """
+
     track_list_pl = (await client.users_playlists(playlist.kind)).tracks
     existing_track_ids_ym = {track.id for track in track_list_pl}
 
@@ -87,6 +112,11 @@ async def update_tracks(client: ClientAsync, playlist, user_id: int, group_id: i
 
 
 async def download_new_tracks_from_playlist(user_id: int, group_id: int):
+    """
+    Inserts new tracks from the user's Yandex playlist into DB.
+    Also syncs the playlist across other group members' accounts.
+    """
+
     client = await get_yandex_music_client(user_id)
     playlist = database.get_playlist(user_id, group_id)
 
@@ -125,6 +155,10 @@ async def download_new_tracks_from_playlist(user_id: int, group_id: int):
 
 
 async def create_or_update_playlist(user_id: int, group_id: int, title: str = ""):
+    """
+    Creates or updates a group playlist. If playlist doesn't exist — creates one.
+    """
+
     client = await get_yandex_music_client(user_id)
 
     playlist = database.get_playlist(user_id, group_id)
@@ -141,21 +175,25 @@ async def create_or_update_playlist(user_id: int, group_id: int, title: str = ""
     await download_new_tracks_from_playlist(user_id, group_id)
 
 
-async def playlist_update_job(context):
+async def playlist_update_job(_):
+    """
+    Scheduled job that runs periodically to sync all users` playlists with their groups.
+    """
+
     logger.info("Playlist update via JobQueue started")
 
-    try:
-        users = database.get_all_users()
-        for user in users:
-            for group in database.get_user_groups(user.id):
-                try:
-                    await create_or_update_playlist(user.id, group.id)
-                    logger.info(
-                        f"Updated playlist for user {user.id} in group {group.id}"
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Failed to update playlist for user {user.id} in group {group.id}: {e}"
-                    )
-    except Exception as e:
-        logger.error(f"Error in playlist_update_job: {e}")
+    users = database.get_all_users()
+    for user in users:
+        for group in database.get_user_groups(user.id):
+            try:
+                await create_or_update_playlist(user.id, group.id)
+                logger.info(
+                    "Updated playlist for user %d in group %d", user.id, group.id
+                )
+            except (yandex_music.exceptions.YandexMusicError, ValueError) as e:
+                logger.error(
+                    "Failed to update playlist for user %d in group %d: %s",
+                    user.id,
+                    group.id,
+                    e,
+                )

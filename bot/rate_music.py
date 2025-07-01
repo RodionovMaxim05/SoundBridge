@@ -15,16 +15,16 @@ from bot.utils import (
     send_or_edit_message,
     build_paginated_keyboard,
 )
-from constants import State, CallbackData
+from bot.constants import State, CallbackData
 
 
-async def rate_track_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def rate_track_handler(update: Update, _) -> int:
     """
     Handler for starting the rating process. Shows a list of groups to choose from.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "rate_track_handler"')
+    logger.info('User %d in "rate_track_handler"', user.id)
     query = update.callback_query
     await query.answer()
 
@@ -42,7 +42,7 @@ async def choose_track_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "choose_track"')
+    logger.info('User %d in "choose_track"', user.id)
     query = update.callback_query
     await query.answer()
 
@@ -73,7 +73,7 @@ async def chosen_track_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "chosen_track_handler"')
+    logger.info('User %d in "chosen_track_handler"', user.id)
     query = update.callback_query
     await query.answer()
 
@@ -106,13 +106,13 @@ async def chosen_track_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     )
 
 
-async def change_rating_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def change_rating_handler(update: Update, _):
     """
     Applies the user's rating to the selected track.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "change_rating_handler"')
+    logger.info('User %d in "change_rating_handler"', user.id)
     query = update.callback_query
     await query.answer()
 

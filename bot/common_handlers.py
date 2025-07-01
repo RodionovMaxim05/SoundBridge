@@ -1,31 +1,22 @@
 import logging
 
 import telegram
-from telegram import (
-    Update,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    User,
-)
-from telegram.ext import ContextTypes
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, User
 
 from bot.utils import database, send_or_edit_message
-from constants import State, CallbackData
+from bot.constants import State, CallbackData
 
 logger = logging.getLogger(__name__)
 
 
-async def start_handler(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-) -> int:
+async def start_handler(update: Update, _) -> int:
     """
     Handles the /start command. Initializes the bot, creates database tables,
     and inserts the user into the database. Displays a menu with options.
     """
 
     user = update.effective_user
-    logger.info(f"User {user.id} - {user.name} started the bot.")
+    logger.info("User %d - %s started the bot.", user.id, user.name)
     database.create_tables()
     database.insert_user(user.id, user.name)
 
@@ -78,40 +69,35 @@ async def start_handler(
     return State.START.value
 
 
-async def token_handler(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-) -> int:
+async def token_handler(update: Update, _) -> int:
     """
     Handles the "Update Token" callback. Prompts the user to enter a new token.
     """
 
-    logger.info(f'User {update.effective_user.id} in "token_handler"')
+    logger.info('User %d in "token_handler"', update.effective_user.id)
     await send_or_edit_message(
         update,
-        text="Введите ваш токен\n\nИли напишить /start для отмены\n\n❗️<b>Как получить токен</b>\n\n"
-        'По <b><a href="https://github.com/MarshalX/yandex-music-api/discussions/513 ">этой ссылке</a></b> '
-        "описано несколько способов, но самый удобный (и тот, которым пользовался я) - это использование "
-        "расширения для Chrome или Firefox: \n<b>1.</b> Установите расширение\n<b>2.</b> Авторизуйтесь "
-        "(если не произошло автоматически)\n<b>3.</b> Предоставьте доступ\n<b>4.</b> Снова откройте "
-        "расширение (т.к. тг бот там не работает)\n<b>5.</b> Снизу слева нажмите на кнопку "
-        '"Скопировать токен"\n<b>6.</b> Вставьте токен сюда',
+        text="Введите ваш токен\n\nИли напишить /start для отмены\n\n❗️<b>Как получить токен</b>"
+        '\n\nПо <b><a href="https://github.com/MarshalX/yandex-music-api/discussions/513 ">'
+        "этой ссылке</a></b> описано несколько способов, но самый удобный (и тот, которым "
+        "пользовался я) - это использование расширения для Chrome или Firefox: \n<b>1.</b> "
+        "Установите расширение\n<b>2.</b> Авторизуйтесь (если не произошло автоматически)\n<b>"
+        "3.</b> Предоставьте доступ\n<b>4.</b> Снова откройте расширение (т.к. тг бот там не "
+        'работает)\n<b>5.</b> Снизу слева нажмите на кнопку "Скопировать токен"\n<b>6.</b> '
+        "Вставьте токен сюда",
         parse_mode=telegram.constants.ParseMode.HTML,
     )
 
     return State.ENTER_TOKEN.value
 
 
-async def receive_token_handler(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-) -> int:
+async def receive_token_handler(update: Update, _) -> int:
     """
     Receives the token from the user and updates it in the database.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "receive_token_handler"')
+    logger.info('User %d in "receive_token_handler"', user.id)
 
     user_message = update.message.text
 
@@ -135,17 +121,14 @@ async def receive_token_handler(
     return State.START.value
 
 
-async def account_handler(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-) -> None:
+async def account_handler(update: Update, _) -> None:
     """
     Handles the /account command. Displays the user's account information,
     including token status and sharing statistics.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "token_handler"')
+    logger.info('User %d in "token_handler"', user.id)
 
     result = database.get_user_statistic(user.id)
 
@@ -175,9 +158,9 @@ async def account_handler(
     await send_or_edit_message(
         update,
         text=f"<b>Ваш аккаунт\n\nТокен:</b> {token}\n\n📊 <b>Статистика:</b>\n\n"
-        f"💽 Количество композиций, которыми вы поделились: <b>{result.get('count_of_sharing')}</b>\n\n"
-        f"💯 Средняя ваша оценка: <b>{score_rated_str}</b>\n\n"
-        f"⭐️ Средняя оценка по вашей музыке: <b>{score_shared_str}</b>\n",
+        f"💽 Количество композиций, которыми вы поделились: <b>{result.get('count_of_sharing')}"
+        f"</b>\n\n💯 Средняя ваша оценка: <b>{score_rated_str}</b>\n\n"
+        f"⭐️ Средняя оценка по вашей музыке: <b>{score_shared_str}</b>",
         reply_markup=reply_markup,
         parse_mode=telegram.constants.ParseMode.HTML,
     )
@@ -206,7 +189,7 @@ def group_selection(user: User, cl_data: str) -> InlineKeyboardMarkup:
     keyboard.append(
         [
             InlineKeyboardButton(
-                f"🔙 Назад",
+                "🔙 Назад",
                 callback_data=str(CallbackData.MENU.value),
             )
         ]
@@ -218,7 +201,6 @@ def group_selection(user: User, cl_data: str) -> InlineKeyboardMarkup:
 
 async def handle_error_with_back_button(
     update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
     error_message: str,
     back_button_callback_data: str = str(CallbackData.MENU.value),
     state: int = State.START.value,

@@ -28,18 +28,16 @@ from bot.utils import (
     format_track_name,
     build_paginated_keyboard,
 )
-from constants import State, CallbackData
+from bot.constants import State, CallbackData
 
 
-async def share_music_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
+async def share_music_handler(update: Update, _) -> int:
     """
     Handles the initial step of sharing a music. Displays a list of user's groups to choose from.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "share_music_handler"')
+    logger.info('User %d in "share_music_handler"', user.id)
     query = update.callback_query
     await query.answer()
 
@@ -56,8 +54,8 @@ async def choose_music_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     Handles the selection of a group and prompts the user to choose a music to share.
     """
 
-    logger.info(f'User {update.effective_user.id} in "choose_music_handler"')
-    query = update.callback_query
+    logger.info('User %d in "choose_music_handler"', update.effective_user.id)
+    query = update.callback_query  # pylint: disable=R0801
     await query.answer()
 
     callback_data = query.data
@@ -99,14 +97,14 @@ async def show_liked_track_handler(update: Update, context: ContextTypes.DEFAULT
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "show_liked_track_handler"')
+    logger.info('User %d in "show_liked_track_handler"', user.id)
     query = update.callback_query
     await query.answer()
 
     try:
         liked_tracks = await get_last_n_liked_track(user.id, n=15)
     except ValueError as e:
-        return await handle_error_with_back_button(update, context, str(e))
+        return await handle_error_with_back_button(update, str(e))
 
     tracks = [
         (
@@ -147,7 +145,7 @@ async def search_track_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     Handles the initial step of searching for a track.
     """
 
-    logger.info(f'User {update.effective_user.id} in "search_track_handler"')
+    logger.info('User %d in "search_track_handler"', update.effective_user.id)
 
     context.user_data["search"] = "track"
     return await search_music(update)
@@ -158,7 +156,7 @@ async def search_album_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     Handles the initial step of searching for an album.
     """
 
-    logger.info(f'User {update.effective_user.id} in "search_album_handler"')
+    logger.info('User %d in "search_album_handler"', update.effective_user.id)
 
     context.user_data["search"] = "album"
     return await search_music(update)
@@ -168,11 +166,12 @@ async def receive_search_query_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
     """
-    Handles the user's search query, performs a search, and displays the results as inline keyboard buttons.
+    Handles the user's search query, performs a search, and displays the results as inline
+    keyboard buttons.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "receive_search_query_handler"')
+    logger.info('User %d in "receive_search_query_handler"', user.id)
     user_message = update.message.text
 
     type_of_search = context.user_data["search"]
@@ -180,14 +179,15 @@ async def receive_search_query_handler(
     try:
         result_of_search = await search_request(user.id, user_message, type_of_search)
     except ValueError as e:
-        return await handle_error_with_back_button(update, context, str(e))
+        return await handle_error_with_back_button(update, str(e))
 
     count_of_results = min(result_of_search.total + 1, 7) - 1
 
     keyboard = [
         [
             InlineKeyboardButton(
-                f"{result_of_search.results[i].artists[0].name} - {result_of_search.results[i].title}",
+                f"{result_of_search.results[i].artists[0].name} - "
+                f"{result_of_search.results[i].title}",
                 callback_data=f"chosen_{result_of_search.results[i].id}",
             )
         ]
@@ -215,7 +215,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "message_handler"')
+    logger.info('User %d in "message_handler"', user.id)
     query = update.callback_query
     await query.answer()
 
@@ -278,9 +278,9 @@ async def send_message_to_users(
                     parse_mode=parse_mode,
                     reply_markup=reply_markup,
                 )
-                logger.info(f"Message sent to user {user.id}.")
+                logger.info("Message sent to user %d.", user.id)
             except TelegramError as e:
-                logger.error(f"Failed to send message to user {user.id}: {e}")
+                logger.error("Failed to send message to user %d: %s", user.id, e)
 
 
 async def receive_message_handler(
@@ -291,7 +291,7 @@ async def receive_message_handler(
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "receive_message_handler"')
+    logger.info('User %d in "receive_message_handler"', user.id)
 
     group_id = context.user_data.get("share_group_id")
     yandex_id = context.user_data["yandex_id"]
@@ -341,7 +341,7 @@ async def receive_message_handler(
     return State.START.value
 
 
-async def mark_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def mark_callback_handler(update: Update, _):
     """
     Handles the user's response to the inline keyboard.
     """
@@ -354,7 +354,7 @@ async def mark_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
     music_id = int(callback_data.split("_")[2])
 
     user = query.from_user
-    logger.info(f"User {user.id} selected mark {mark}")
+    logger.info("User %d selected mark %d", user.id, mark)
 
     database.rate_music(user.id, music_id, mark)
 

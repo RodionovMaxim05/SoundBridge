@@ -47,13 +47,13 @@ from bot.sharing_music import (
     mark_callback_handler,
 )
 from bot.utils import pagination_handler
-from common_handlers import (
+from bot.common_handlers import (
     start_handler,
     token_handler,
     receive_token_handler,
     account_handler,
 )
-from constants import State, CallbackData
+from bot.constants import State, CallbackData
 
 main_conversation = ConversationHandler(
     entry_points=[

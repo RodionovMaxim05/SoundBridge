@@ -15,16 +15,16 @@ from bot.utils import (
     fix_yandex_image_uri,
     send_or_edit_message,
 )
-from constants import State, CallbackData
+from bot.constants import State, CallbackData
 
 
-async def history_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def history_handler(update: Update, _) -> int:
     """
     Handles the initial step of viewing history. Displays options to view personal or group history.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "history_handler"')
+    logger.info('User %d in "history_handler"', user.id)
 
     keyboard = [
         [
@@ -78,7 +78,7 @@ def get_carousel_keyboard(current_index, total_items):
             keyboard,
             [
                 InlineKeyboardButton(
-                    f"🔙 Назад", callback_data=str(CallbackData.HISTORY.value)
+                    "🔙 Назад", callback_data=str(CallbackData.HISTORY.value)
                 )
             ],
         ]
@@ -98,7 +98,10 @@ async def simple_format_history_music(music, is_group: bool, index: int) -> str:
 
     music_url = make_url_for_music(music_info, music.type_of_music)
 
-    text = f'<b>{index}.</b> <a href="{music_url}">{music.title}</a> | Ср. оценка: {music.average_mark:.2f} '
+    text = (
+        f'<b>{index}.</b> <a href="{music_url}">{music.title}</a> | '
+        f"Ср. оценка: {music.average_mark:.2f} "
+    )
     if is_group:
         text += f"| Пользователь: {database.get_username(music.user_id)}"
     else:
@@ -121,21 +124,30 @@ async def format_music_entry(music, is_group: bool, index: int = -1) -> str:
 
     mark = music.average_mark if music.count_of_ratings > 0 else "Оценок нет"
     if index != -1:
-        text = f'{index}. <a href="{music_url}">{music.title}</a>\n\n<b>Ср. оценка: {mark:.2f}</b>\n\n'
+        text = (
+            f'{index}. <a href="{music_url}">{music.title}</a>\n\n<b>Ср. '
+            f"оценка: {mark:.2f}</b>\n\n"
+        )
     else:
         text = (
-            f'<a href="{music_url}">{music.title}</a>\n\n<b>Ср. оценка: {mark:.2f}</b>\n\n'
-            f"Пользователь: {database.get_username(music.user_id)}\n"
+            f'<a href="{music_url}">{music.title}</a>\n\n<b>Ср. оценка: '
+            f"{mark:.2f}</b>\n\n Пользователь: {database.get_username(music.user_id)}\n"
         )
 
     if is_group:
-        text += f"Пользователь: {database.get_username(music.user_id)}\n<blockquote>{music.message}</blockquote>"
+        text += (
+            f"Пользователь: {database.get_username(music.user_id)}\n<blockquote>"
+            f"{music.message}</blockquote>"
+        )
     else:
         group_name = database.get_group_name(music.group_id)
         if group_name is None:
             text += f"Группа: Без группы\n<blockquote>{music.message}</blockquote>"
         else:
-            text += f"Группа: {database.get_group_name(music.group_id)}\n<blockquote>{music.message}</blockquote>"
+            text += (
+                f"Группа: {database.get_group_name(music.group_id)}\n<blockquote>"
+                f"{music.message}</blockquote>"
+            )
 
     return text
 
@@ -230,7 +242,7 @@ async def get_history(
             ],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text("Ваша история пуста.", reply_markup=reply_markup)
+        await query.edit_message_text("Ваша история пуста", reply_markup=reply_markup)
         return State.VIEW_HISTORY.value
 
     if is_carousel:
@@ -248,7 +260,7 @@ async def carousel_navigation_handler(
     Handles navigation through the carousel.
     """
 
-    logger.info(f'User {update.effective_user.id} in "carousel_navigation_handler"')
+    logger.info('User %d in "carousel_navigation_handler"', update.effective_user.id)
     query = update.callback_query
     await query.answer()
 
@@ -295,25 +307,21 @@ async def select_group_history(update: Update, cl_data):
     )
 
 
-async def group_history_list_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-):
+async def group_history_list_handler(update: Update, _):
     """
     Handles the selection of a group to view its sharing history as a list.
     """
 
-    logger.info(f'User {update.effective_user.id} in "group_history_list_handler"')
+    logger.info('User %d in "group_history_list_handler"', update.effective_user.id)
     await select_group_history(update, "listHistory")
 
 
-async def group_history_carousel_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-):
+async def group_history_carousel_handler(update: Update, _):
     """
     Handles the selection of a group to view its sharing history as a carousel.
     """
 
-    logger.info(f'User {update.effective_user.id} in "group_history_carousel_handler"')
+    logger.info('User %d in "group_history_carousel_handler"', update.effective_user.id)
     await select_group_history(update, "carouselHistory")
 
 
@@ -324,7 +332,9 @@ async def display_my_history_list_handler(
     Displays the user's personal sharing history as a list.
     """
 
-    logger.info(f'User {update.effective_user.id} in "display_my_history_list_handler"')
+    logger.info(
+        'User %d in "display_my_history_list_handler"', update.effective_user.id
+    )
     await get_history(update, context, is_group=False, is_carousel=False)
 
 
@@ -336,7 +346,7 @@ async def display_my_history_carousel_handler(
     """
 
     logger.info(
-        f'User {update.effective_user.id} in "display_my_history_carousel_handler"'
+        'User %d in "display_my_history_carousel_handler"', update.effective_user.id
     )
     await get_history(update, context, is_group=False, is_carousel=True)
 
@@ -349,7 +359,7 @@ async def display_group_history_list_handler(
     """
 
     logger.info(
-        f'User {update.effective_user.id} in "display_group_history_list_handler"'
+        'User %d in "display_group_history_list_handler"', update.effective_user.id
     )
     await get_history(update, context, is_group=True, is_carousel=False)
 
@@ -362,6 +372,6 @@ async def display_group_history_carousel_handler(
     """
 
     logger.info(
-        f'User {update.effective_user.id} in "display_group_history_carousel_handler"'
+        'User %d in "display_group_history_carousel_handler"', update.effective_user.id
     )
     await get_history(update, context, is_group=True, is_carousel=True)

@@ -3,21 +3,20 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from bot.common_handlers import logger, group_selection
+from bot.constants import State, CallbackData
 from bot.music import create_or_update_playlist
 from bot.sharing_music import handle_error_with_back_button
 from bot.utils import database, format_groups_with_users
-from constants import State, CallbackData
 
 
-async def manage_groups_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
+async def manage_groups_handler(update: Update, _) -> int:
     """
-    Handles the "Manage Groups" callback. Displays the user's groups and provides options to create or delete groups.
+    Handles the "Manage Groups" callback. Displays the user's groups and
+    provides options to create or delete groups.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "manage_groups_handler"')
+    logger.info('User %d in "manage_groups_handler"', user.id)
     query = update.callback_query
     await query.answer()
 
@@ -59,16 +58,14 @@ async def manage_groups_handler(
     return State.START.value
 
 
-async def create_group_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
+async def create_group_handler(update: Update, _) -> int:
     """
     Handles the "Create Group" callback. Checks if the user has reached the group limit
     and prompts the user to enter a group name.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "create_group_handler"')
+    logger.info('User %d in "create_group_handler"', user.id)
     query = update.callback_query
     await query.answer()
 
@@ -100,15 +97,13 @@ async def create_group_handler(
     return State.CREATE_GROUP.value
 
 
-async def receive_name_of_group_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
+async def receive_name_of_group_handler(update: Update, _) -> int:
     """
     Receives the group name from the user and creates the group in the database.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "receive_name_of_group_handler"')
+    logger.info('User %d in "receive_name_of_group_handler"', user.id)
 
     user_message = update.message.text
 
@@ -126,15 +121,13 @@ async def receive_name_of_group_handler(
     return State.START.value
 
 
-async def delete_group_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
+async def delete_group_handler(update: Update, _) -> int:
     """
     Handles the "Delete Group" callback. Displays a list of the user's groups for deletion.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "delete_group_handler"')
+    logger.info('User %d in "delete_group_handler"', user.id)
     query = update.callback_query
     await query.answer()
 
@@ -146,14 +139,13 @@ async def delete_group_handler(
     return State.DELETE_GROUP.value
 
 
-async def confirm_group_deletion_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-):
+async def confirm_group_deletion_handler(update: Update, _):
     """
-    Confirms the deletion of a group. Displays a confirmation message with options to proceed or cancel.
+    Confirms the deletion of a group. Displays a confirmation message with
+    options to proceed or cancel.
     """
 
-    logger.info(f'User {update.effective_user.id} in "confirm_group_deletion_handler"')
+    logger.info('User %d in "confirm_group_deletion_handler"', update.effective_user.id)
     query = update.callback_query
     await query.answer()
 
@@ -172,14 +164,12 @@ async def confirm_group_deletion_handler(
     )
 
 
-async def delete_group_callback_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
+async def delete_group_callback_handler(update: Update, _) -> int:
     """
     Handles the actual deletion of a group from the database.
     """
 
-    logger.info(f'User {update.effective_user.id} in "delete_group_callback_handler"')
+    logger.info('User %d in "delete_group_callback_handler"', update.effective_user.id)
     query = update.callback_query
     await query.answer()
 
@@ -200,12 +190,13 @@ async def delete_group_callback_handler(
     return State.START.value
 
 
-async def name_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def name_handler(update: Update, _) -> int:
     """
-    Handles the username input step. Prompts the user to enter a username (with @) to add to a group.
+    Handles the username input step. Prompts the user to enter a username (with @)
+    to add to a group.
     """
 
-    logger.info(f'User {update.effective_user.id} in "name_handler"')
+    logger.info('User %d in "name_handler"', update.effective_user.id)
     query = update.callback_query
     await query.answer()
 
@@ -225,7 +216,7 @@ async def check_name_and_choose_group_handler(
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "check_name_and_choose_group_handler"')
+    logger.info('User %d in "check_name_and_choose_group_handler"', user.id)
 
     user_message = update.message.text
     if database.check_username(user_message):
@@ -245,7 +236,7 @@ async def check_name_and_choose_group_handler(
         keyboard.append(
             [
                 InlineKeyboardButton(
-                    f"🔙 Назад", callback_data=str(CallbackData.MANAGE_GROUPS.value)
+                    "🔙 Назад", callback_data=str(CallbackData.MANAGE_GROUPS.value)
                 )
             ]
         )
@@ -256,22 +247,23 @@ async def check_name_and_choose_group_handler(
             reply_markup=reply_markup,
         )
         return State.USER_TO_GROUP.value
-    else:
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    "🔙 Назад", callback_data=str(CallbackData.MANAGE_GROUPS.value)
-                )
-            ],
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await update.message.reply_text(
-            f"❌ Пользователя {user_message} нет в базе данных бота.\n\nЕсли username правильный, попросите пользователя запустить бота.",
-            reply_markup=reply_markup,
-        )
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "🔙 Назад", callback_data=str(CallbackData.MANAGE_GROUPS.value)
+            )
+        ],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
-        return State.START.value
+    await update.message.reply_text(
+        f"❌ Пользователя {user_message} нет в базе данных бота.\n\n"
+        f"Если username правильный, попросите пользователя запустить бота.",
+        reply_markup=reply_markup,
+    )
+
+    return State.START.value
 
 
 async def add_user_to_the_group_handler(
@@ -281,7 +273,7 @@ async def add_user_to_the_group_handler(
     Adds the selected user to the chosen group.
     """
 
-    logger.info(f'User {update.effective_user.id} in "add_user_to_the_group_handler"')
+    logger.info('User %d in "add_user_to_the_group_handler"', update.effective_user.id)
     query = update.callback_query
     await query.answer()
 
@@ -290,10 +282,16 @@ async def add_user_to_the_group_handler(
     username = context.user_data["add_user"]
 
     if len(database.get_group_users(group_id)) == 6:
-        message = f"❌ В группе {database.get_group_name(group_id)} достигнут лимит количества пользователей"
+        message = (
+            f"❌ В группе {database.get_group_name(group_id)} достигнут лимит "
+            f"количества пользователей"
+        )
     else:
         database.add_user_to_group(group_id, username)
-        message = f"✅ Пользователь {username} успешно добавлен в группу {database.get_group_name(group_id)}"
+        message = (
+            f"✅ Пользователь {username} успешно добавлен в группу "
+            f"{database.get_group_name(group_id)}"
+        )
 
     keyboard = [
         [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))],
@@ -305,26 +303,25 @@ async def add_user_to_the_group_handler(
     return State.START.value
 
 
-async def create_playlist_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
+async def create_playlist_handler(update: Update, _) -> int:
     """
     Handles the initial step of creating or updating a playlist.
     Prompts the user to select a group for which the playlist will be created/updated.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "create_playlist_handler"')
+    logger.info('User %d in "create_playlist_handler"', user.id)
     query = update.callback_query
     await query.answer()
 
     reply_markup = group_selection(user, "playlist")
 
     await query.edit_message_text(
-        "<b>Как это работает</b>\n\nВ вашем аккаунте Яндекс Музыка создастся плейлист с названием вашей группы, "
-        "в нем будут храниться все песни, которыми вы поделились в этом боте.\n❗️Кроме того, в него вы самостоятельно"
-        "можете добавлять треки прямо в приложении, и они будут появляться у остальных участников вашей группы\n\n"
-        "Выберите группу, для которой хотите создать/обновить плейлист",
+        "<b>Как это работает</b>\n\nВ вашем аккаунте Яндекс Музыка создастся плейлист "
+        "с названием вашей группы, в нем будут храниться все песни, которыми вы поделились в "
+        "этом боте.\n❗️Кроме того, в него вы самостоятельно можете добавлять треки прямо в "
+        "приложении, и они будут появляться у остальных участников вашей группы\n\nВыберите "
+        "группу, для которой хотите создать/обновить плейлист",
         reply_markup=reply_markup,
         parse_mode=telegram.constants.ParseMode.HTML,
     )
@@ -332,15 +329,13 @@ async def create_playlist_handler(
     return State.START.value
 
 
-async def group_playlist_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
+async def group_playlist_handler(update: Update, _) -> int:
     """
     Processes the selected group and creates or updates the playlist for that group.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "group_playlist_handler"')
+    logger.info('User %d in "group_playlist_handler"', user.id)
     query = update.callback_query
     await query.answer()
 
@@ -357,7 +352,7 @@ async def group_playlist_handler(
             user.id, group_id, database.get_group_name(group_id)
         )
     except ValueError as e:
-        return await handle_error_with_back_button(update, context, str(e))
+        return await handle_error_with_back_button(update, str(e))
 
     await query.edit_message_text(
         f"✅ Плейлист {database.get_group_name(group_id)} успешно создан/обновлен",

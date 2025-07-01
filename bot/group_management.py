@@ -109,6 +109,7 @@ async def receive_name_of_group_handler(
 
     user = update.effective_user
     logger.info(f'User {user.id} in "receive_name_of_group_handler"')
+
     user_message = update.message.text
 
     database.create_group(user_message, user.id)
@@ -339,7 +340,7 @@ async def group_playlist_handler(
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "group_playlist"')
+    logger.info(f'User {user.id} in "group_playlist_handler"')
     query = update.callback_query
     await query.answer()
 

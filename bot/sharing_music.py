@@ -129,10 +129,9 @@ async def show_liked_track_handler(update: Update, context: ContextTypes.DEFAULT
 
 async def search_music(update: Update):
     """
-    Handles the initial step of searching for a music. Prompts the user to enter a search query.
+    Performs the initial step of searching for a music. Prompts the user to enter a search query.
     """
 
-    logger.info(f'User {update.effective_user.id} in "search_music"')
     query = update.callback_query
     await query.answer()
 
@@ -148,6 +147,8 @@ async def search_track_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     Handles the initial step of searching for a track.
     """
 
+    logger.info(f'User {update.effective_user.id} in "search_track_handler"')
+
     context.user_data["search"] = "track"
     return await search_music(update)
 
@@ -156,6 +157,8 @@ async def search_album_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     """
     Handles the initial step of searching for an album.
     """
+
+    logger.info(f'User {update.effective_user.id} in "search_album_handler"')
 
     context.user_data["search"] = "album"
     return await search_music(update)

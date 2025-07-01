@@ -25,8 +25,6 @@ async def history_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     user = update.effective_user
     logger.info(f'User {user.id} in "history_handler"')
-    query = update.callback_query
-    await query.answer()
 
     keyboard = [
         [
@@ -100,7 +98,7 @@ async def simple_format_history_music(music, is_group: bool, index: int) -> str:
 
     music_url = make_url_for_music(music_info, music.type_of_music)
 
-    text = f'<b>{index}.</b> <a href="{music_url}">{music.title}</a> | Ср. оценка: {music.average_mark} '
+    text = f'<b>{index}.</b> <a href="{music_url}">{music.title}</a> | Ср. оценка: {music.average_mark:.2f} '
     if is_group:
         text += f"| Пользователь: {database.get_username(music.user_id)}"
     else:
@@ -123,10 +121,10 @@ async def format_music_entry(music, is_group: bool, index: int = -1) -> str:
 
     mark = music.average_mark if music.count_of_ratings > 0 else "Оценок нет"
     if index != -1:
-        text = f'{index}. <a href="{music_url}">{music.title}</a>\n\n<b>Ср. оценка: {mark}</b>\n\n'
+        text = f'{index}. <a href="{music_url}">{music.title}</a>\n\n<b>Ср. оценка: {mark:.2f}</b>\n\n'
     else:
         text = (
-            f'<a href="{music_url}">{music.title}</a>\n\n<b>Ср. оценка: {mark}</b>\n\n'
+            f'<a href="{music_url}">{music.title}</a>\n\n<b>Ср. оценка: {mark:.2f}</b>\n\n'
             f"Пользователь: {database.get_username(music.user_id)}\n"
         )
 
@@ -219,7 +217,6 @@ async def get_history(
     Displays the sharing history either as a carousel or a list.
     """
 
-    logger.info(f'User {update.effective_user.id} in "get_history"')
     query = update.callback_query
     await query.answer()
 
@@ -282,15 +279,12 @@ async def carousel_navigation_handler(
     )
 
 
-async def group_history_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE, cl_data
-):
+async def select_group_history(update: Update, cl_data):
     """
-    Handles the selection of a group to view its sharing history.
+    Allows to select a group to view its sharing history.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "group_history_handler"')
     query = update.callback_query
     await query.answer()
 
@@ -309,7 +303,7 @@ async def group_history_list_handler(
     """
 
     logger.info(f'User {update.effective_user.id} in "group_history_list_handler"')
-    await group_history_handler(update, context, "listHistory")
+    await select_group_history(update, "listHistory")
 
 
 async def group_history_carousel_handler(
@@ -320,7 +314,7 @@ async def group_history_carousel_handler(
     """
 
     logger.info(f'User {update.effective_user.id} in "group_history_carousel_handler"')
-    await group_history_handler(update, context, "carouselHistory")
+    await select_group_history(update, "carouselHistory")
 
 
 async def display_my_history_list_handler(

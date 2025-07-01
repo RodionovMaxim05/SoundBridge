@@ -161,11 +161,23 @@ async def account_handler(
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
+    score_rated = result.get("score_of_rated_music")
+    score_shared = result.get("score_of_shared_music")
+    score_rated_str = (
+        f"{score_rated:.2f}" if isinstance(score_rated, (int, float)) else score_rated
+    )
+    score_shared_str = (
+        f"{score_shared:.2f}"
+        if isinstance(score_shared, (int, float))
+        else score_shared
+    )
+
     await send_or_edit_message(
         update,
-        text=f"<b>Ваш аккаунт\n\nТокен:</b> {token}\n\n📊 <b>Статистика:</b>\n\n💽 Количество композиций, которыми вы поделились: "
-        f"<b>{result.get('count_of_sharing')}</b>\n\n💯 Средняя ваша оценка: <b>{result.get('score_of_rated_music')}</b>\n\n"
-        f"⭐️ Средняя оценка по вашей музыке: <b>{result.get('score_of_shared_music')}</b>\n",
+        text=f"<b>Ваш аккаунт\n\nТокен:</b> {token}\n\n📊 <b>Статистика:</b>\n\n"
+        f"💽 Количество композиций, которыми вы поделились: <b>{result.get('count_of_sharing')}</b>\n\n"
+        f"💯 Средняя ваша оценка: <b>{score_rated_str}</b>\n\n"
+        f"⭐️ Средняя оценка по вашей музыке: <b>{score_shared_str}</b>\n",
         reply_markup=reply_markup,
         parse_mode=telegram.constants.ParseMode.HTML,
     )

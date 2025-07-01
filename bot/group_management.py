@@ -9,13 +9,15 @@ from bot.utils import database, format_groups_with_users
 from constants import State, CallbackData
 
 
-async def manage_groups(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def manage_groups_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
     """
     Handles the "Manage Groups" callback. Displays the user's groups and provides options to create or delete groups.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "manage_groups"')
+    logger.info(f'User {user.id} in "manage_groups_handler"')
     query = update.callback_query
     await query.answer()
 
@@ -98,7 +100,7 @@ async def create_group_handler(
     return State.CREATE_GROUP.value
 
 
-async def receive_name_of_group(
+async def receive_name_of_group_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
     """
@@ -106,7 +108,7 @@ async def receive_name_of_group(
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "receive_name_of_group"')
+    logger.info(f'User {user.id} in "receive_name_of_group_handler"')
     user_message = update.message.text
 
     database.create_group(user_message, user.id)
@@ -143,14 +145,14 @@ async def delete_group_handler(
     return State.DELETE_GROUP.value
 
 
-async def confirm_group_deletion(
+async def confirm_group_deletion_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
+):
     """
     Confirms the deletion of a group. Displays a confirmation message with options to proceed or cancel.
     """
 
-    logger.info(f'User {update.effective_user.id} in "confirm_group_deletion"')
+    logger.info(f'User {update.effective_user.id} in "confirm_group_deletion_handler"')
     query = update.callback_query
     await query.answer()
 
@@ -167,7 +169,6 @@ async def confirm_group_deletion(
         f"❓ Вы действительно хотите удалить группу {database.get_group_name(group_id)}?",
         reply_markup=reply_markup,
     )
-    return State.DELETE_GROUP.value
 
 
 async def delete_group_callback_handler(
@@ -214,7 +215,7 @@ async def name_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     return State.TAKE_USERNAME.value
 
 
-async def check_name_and_choose_group(
+async def check_name_and_choose_group_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
     """
@@ -223,7 +224,7 @@ async def check_name_and_choose_group(
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "check_name_and_choose_group"')
+    logger.info(f'User {user.id} in "check_name_and_choose_group_handler"')
 
     user_message = update.message.text
     if database.check_username(user_message):
@@ -272,14 +273,14 @@ async def check_name_and_choose_group(
         return State.START.value
 
 
-async def add_user_to_the_group(
+async def add_user_to_the_group_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
     """
     Adds the selected user to the chosen group.
     """
 
-    logger.info(f'User {update.effective_user.id} in "add_user_to_the_group"')
+    logger.info(f'User {update.effective_user.id} in "add_user_to_the_group_handler"')
     query = update.callback_query
     await query.answer()
 
@@ -330,7 +331,9 @@ async def create_playlist_handler(
     return State.START.value
 
 
-async def group_playlist(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def group_playlist_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
     """
     Processes the selected group and creates or updates the playlist for that group.
     """

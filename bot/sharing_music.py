@@ -15,10 +15,10 @@ from bot.common_handlers import (
     handle_error_with_back_button,
 )
 from bot.music import (
-    get_last_five_liked_track,
     get_track_info,
     search_request,
     get_album_info,
+    get_last_n_liked_track,
 )
 from bot.utils import (
     database,
@@ -26,13 +26,14 @@ from bot.utils import (
     fix_yandex_image_uri,
     format_message,
     format_track_name,
+    build_paginated_keyboard,
 )
 from constants import State, CallbackData
 
 
 async def share_music_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
+) -> int:
     """
     Handles the initial step of sharing a music. Displays a list of user's groups to choose from.
     """
@@ -46,12 +47,11 @@ async def share_music_handler(
     await query.edit_message_text(
         "Выберите группу, с которой хотите поделиться", reply_markup=reply_markup
     )
+
     return State.SHARE_MUSIC.value
 
 
-async def choose_music_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
+async def choose_music_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handles the selection of a group and prompts the user to choose a music to share.
     """
@@ -67,7 +67,7 @@ async def choose_music_handler(
     keyboard = [
         [
             InlineKeyboardButton(
-                "❤️ Выбрать из 5 последних любимых",
+                "❤️ Выбрать из последних любимых",
                 callback_data=str(CallbackData.CHOOSE_LIKED_TRACK.value),
             )
         ],
@@ -91,46 +91,43 @@ async def choose_music_handler(
         f"{format_users_of_group(group_id)}Выберите, чем хотите поделиться",
         reply_markup=reply_markup,
     )
-    return State.SHARE_MUSIC.value
 
 
-async def show_liked_track(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def show_liked_track_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Displays the last five liked tracks for the user to choose from.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "choose_track_handler"')
+    logger.info(f'User {user.id} in "show_liked_track_handler"')
     query = update.callback_query
     await query.answer()
 
     try:
-        liked_tracks = await get_last_five_liked_track(user.id)
+        liked_tracks = await get_last_n_liked_track(user.id, n=15)
     except ValueError as e:
         return await handle_error_with_back_button(update, context, str(e))
 
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                f"{', '.join(artist.name for artist in track.artists)} — {track.title}",
-                callback_data=f"chosen_{track.id}",
-            )
-        ]
+    tracks = [
+        (
+            f"{', '.join(artist.name for artist in track.artists)} — {track.title}",
+            track.id,
+        )
         for track in liked_tracks
     ]
-    keyboard.append(
-        [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))]
-    )
-    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    context.user_data["data"] = tracks
+
+    reply_markup, _ = build_paginated_keyboard(tracks, page=0)
 
     await query.edit_message_text(
-        f"{format_users_of_group(context.user_data["share_group_id"])}Выберите, чем хотите поделиться",
+        f"{format_users_of_group(context.user_data["share_group_id"])}Выберите трек",
         reply_markup=reply_markup,
     )
-    return State.SHARE_MUSIC.value
+    return None
 
 
-async def search_music(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def search_music(update: Update):
     """
     Handles the initial step of searching for a music. Prompts the user to enter a search query.
     """
@@ -146,33 +143,33 @@ async def search_music(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     return State.SEARCH_QUERY_MUSIC.value
 
 
-async def search_track(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def search_track_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handles the initial step of searching for a track.
     """
 
     context.user_data["search"] = "track"
-    return await search_music(update, context)
+    return await search_music(update)
 
 
-async def search_album(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def search_album_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handles the initial step of searching for an album.
     """
 
     context.user_data["search"] = "album"
-    return await search_music(update, context)
+    return await search_music(update)
 
 
-async def receive_search_query(
+async def receive_search_query_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
+):
     """
     Handles the user's search query, performs a search, and displays the results as inline keyboard buttons.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "receive_search_query"')
+    logger.info(f'User {user.id} in "receive_search_query_handler"')
     user_message = update.message.text
 
     type_of_search = context.user_data["search"]
@@ -253,7 +250,7 @@ async def send_message_to_users(
     message_text: str,
     photo: str,
     parse_mode: str = None,
-) -> None:
+):
     """
     Sends a message to a list of users by their user IDs.
     """
@@ -283,13 +280,15 @@ async def send_message_to_users(
                 logger.error(f"Failed to send message to user {user.id}: {e}")
 
 
-async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def receive_message_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
     """
     Receives the user's message and sends it to the selected group.
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "receive_message"')
+    logger.info(f'User {user.id} in "receive_message_handler"')
 
     group_id = context.user_data.get("share_group_id")
     yandex_id = context.user_data["yandex_id"]
@@ -339,9 +338,7 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     return State.START.value
 
 
-async def mark_callback_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
+async def mark_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handles the user's response to the inline keyboard.
     """

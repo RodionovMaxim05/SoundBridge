@@ -71,7 +71,6 @@ async def start_handler(
 
     await send_or_edit_message(
         update,
-        context,
         text="Пожалуйста, выберите действие",
         reply_markup=reply_markup,
     )
@@ -90,7 +89,6 @@ async def token_handler(
     logger.info(f'User {update.effective_user.id} in "token_handler"')
     await send_or_edit_message(
         update,
-        context,
         text="Введите ваш токен\n\nИли напишить /start для отмены\n\n❗️<b>Как получить токен</b>\n\n"
         'По <b><a href="https://github.com/MarshalX/yandex-music-api/discussions/513 ">этой ссылке</a></b> '
         "описано несколько способов, но самый удобный (и тот, которым пользовался я) - это использование "
@@ -104,7 +102,7 @@ async def token_handler(
     return State.ENTER_TOKEN.value
 
 
-async def receive_token(
+async def receive_token_handler(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ) -> int:
@@ -113,7 +111,7 @@ async def receive_token(
     """
 
     user = update.effective_user
-    logger.info(f'User {user.id} in "token_handler"')
+    logger.info(f'User {user.id} in "receive_token_handler"')
 
     user_message = update.message.text
 
@@ -165,7 +163,6 @@ async def account_handler(
 
     await send_or_edit_message(
         update,
-        context,
         text=f"<b>Ваш аккаунт\n\nТокен:</b> {token}\n\n📊 <b>Статистика:</b>\n\n💽 Количество композиций, которыми вы поделились: "
         f"<b>{result.get('count_of_sharing')}</b>\n\n💯 Средняя ваша оценка: <b>{result.get('score_of_rated_music')}</b>\n\n"
         f"⭐️ Средняя оценка по вашей музыке: <b>{result.get('score_of_shared_music')}</b>\n",
@@ -229,7 +226,6 @@ async def handle_error_with_back_button(
     reply_markup = InlineKeyboardMarkup(keyboard)
     await send_or_edit_message(
         update,
-        context,
         text=error_message,
         reply_markup=reply_markup,
     )

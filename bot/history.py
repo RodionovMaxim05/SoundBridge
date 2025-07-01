@@ -18,7 +18,7 @@ from bot.utils import (
 from constants import State, CallbackData
 
 
-async def history_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def history_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Handles the initial step of viewing history. Displays options to view personal or group history.
     """
@@ -55,7 +55,6 @@ async def history_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     await send_or_edit_message(
         update,
-        context,
         text="Выберите, чью историю хотите посмотреть",
         reply_markup=reply_markup,
     )
@@ -101,7 +100,7 @@ async def simple_format_history_music(music, is_group: bool, index: int) -> str:
 
     music_url = make_url_for_music(music_info, music.type_of_music)
 
-    text = f'{index}. <a href="{music_url}">{music.title}</a> | Ср. оценка: {music.average_mark} '
+    text = f'<b>{index}.</b> <a href="{music_url}">{music.title}</a> | Ср. оценка: {music.average_mark} '
     if is_group:
         text += f"| Пользователь: {database.get_username(music.user_id)}"
     else:
@@ -160,7 +159,7 @@ async def get_history_data(update: Update, is_group: bool) -> tuple[list, str]:
     return history, text
 
 
-async def display_carousel(query, history: list, is_group: bool) -> None:
+async def display_carousel(query, history: list, is_group: bool):
     """
     Displays the history as a carousel.
     """
@@ -180,7 +179,7 @@ async def display_carousel(query, history: list, is_group: bool) -> None:
     )
 
 
-async def display_list(query, history: list, text: str, is_group: bool) -> None:
+async def display_list(query, history: list, text: str, is_group: bool):
     """
     Displays the history as a list.
     """
@@ -215,7 +214,7 @@ async def get_history(
     context: ContextTypes.DEFAULT_TYPE,
     is_carousel: bool,
     is_group: bool,
-) -> int:
+):
     """
     Displays the sharing history either as a carousel or a list.
     """
@@ -244,17 +243,15 @@ async def get_history(
     else:
         await display_list(query, history, text, is_group)
 
-    return State.VIEW_HISTORY.value
 
-
-async def handle_carousel_navigation(
+async def carousel_navigation_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
+):
     """
     Handles navigation through the carousel.
     """
 
-    logger.info(f'User {update.effective_user.id} in "handle_carousel_navigation"')
+    logger.info(f'User {update.effective_user.id} in "carousel_navigation_handler"')
     query = update.callback_query
     await query.answer()
 
@@ -284,12 +281,10 @@ async def handle_carousel_navigation(
         reply_markup=reply_markup,
     )
 
-    return State.VIEW_HISTORY.value
-
 
 async def group_history_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE, cl_data
-) -> int:
+):
     """
     Handles the selection of a group to view its sharing history.
     """
@@ -305,12 +300,10 @@ async def group_history_handler(
         reply_markup=reply_markup,
     )
 
-    return State.VIEW_HISTORY.value
-
 
 async def group_history_list_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
+):
     """
     Handles the selection of a group to view its sharing history as a list.
     """
@@ -321,7 +314,7 @@ async def group_history_list_handler(
 
 async def group_history_carousel_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
+):
     """
     Handles the selection of a group to view its sharing history as a carousel.
     """
@@ -330,45 +323,51 @@ async def group_history_carousel_handler(
     await group_history_handler(update, context, "carouselHistory")
 
 
-async def display_my_history_list(
+async def display_my_history_list_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
+):
     """
     Displays the user's personal sharing history as a list.
     """
 
-    logger.info(f'User {update.effective_user.id} in "display_my_history_list"')
+    logger.info(f'User {update.effective_user.id} in "display_my_history_list_handler"')
     await get_history(update, context, is_group=False, is_carousel=False)
 
 
-async def display_my_history_carousel(
+async def display_my_history_carousel_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
+):
     """
     Displays the user's personal sharing history as a carousel.
     """
 
-    logger.info(f'User {update.effective_user.id} in "display_my_history_carousel"')
+    logger.info(
+        f'User {update.effective_user.id} in "display_my_history_carousel_handler"'
+    )
     await get_history(update, context, is_group=False, is_carousel=True)
 
 
-async def display_group_history_list(
+async def display_group_history_list_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
+):
     """
     Displays the group's sharing history as a list.
     """
 
-    logger.info(f'User {update.effective_user.id} in "display_group_history_list"')
+    logger.info(
+        f'User {update.effective_user.id} in "display_group_history_list_handler"'
+    )
     await get_history(update, context, is_group=True, is_carousel=False)
 
 
-async def display_group_history_carousel(
+async def display_group_history_carousel_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
+):
     """
     Displays the group's sharing history as a carousel.
     """
 
-    logger.info(f'User {update.effective_user.id} in "display_group_history_carousel"')
+    logger.info(
+        f'User {update.effective_user.id} in "display_group_history_carousel_handler"'
+    )
     await get_history(update, context, is_group=True, is_carousel=True)

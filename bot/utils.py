@@ -1,8 +1,9 @@
 import telegram
-from telegram import Update, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes
 from yandex_music import Track
 
+from bot.constants import CallbackData
 from database import Database
 
 database = Database()
@@ -30,7 +31,6 @@ def format_users_of_group(group_id: int) -> str:
 
 async def send_or_edit_message(
     update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
     text: str,
     reply_markup: InlineKeyboardMarkup = None,
     parse_mode: str = None,
@@ -78,7 +78,7 @@ def fix_yandex_image_uri(url: str, size: str = "m1000x1000") -> str:
     return url
 
 
-def make_url_for_music(music_info: Track, type_of_search: str):
+def make_url_for_music(music_info: Track, type_of_search: str) -> str:
     """
     Generates a Yandex Music URL for the given music.
     """
@@ -109,3 +109,65 @@ def format_message(
         format_track_name(music_info, type_of_search)
         + f"От {username}:\n<blockquote>{user_message}</blockquote>"
     )
+
+
+def build_paginated_keyboard(data: list, page: int):
+    """
+    Builds an inline keyboard with pagination.
+    """
+
+    items_per_page = 5
+    total_items = len(data)
+    total_pages = (total_items + items_per_page - 1) // items_per_page
+
+    page = max(0, min(page, total_pages - 1))
+
+    start_index = page * items_per_page
+    end_index = start_index + items_per_page
+    current_page_items = data[start_index:end_index]
+
+    keyboard = []
+
+    for item in current_page_items:
+        keyboard.append(
+            [InlineKeyboardButton(str(item[0]), callback_data=f"chosen_{item[1]}")]
+        )
+
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(
+            InlineKeyboardButton("⬅️ Назад", callback_data=f"prev_{page}")
+        )
+    if page < total_pages - 1:
+        nav_buttons.append(
+            InlineKeyboardButton("➡️ Вперед", callback_data=f"next_{page}")
+        )
+
+    keyboard.append(nav_buttons)
+    keyboard.append(
+        [InlineKeyboardButton(f"🔙 Назад", callback_data=str(CallbackData.MENU.value))]
+    )
+
+    return InlineKeyboardMarkup(keyboard), page
+
+
+async def pagination_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles pagination between tracks.
+    """
+
+    query = update.callback_query
+    await query.answer()
+
+    action, current_page = query.data.split("_")[0], int(query.data.split("_")[1])
+
+    if action == "prev":
+        current_page -= 1
+    elif action == "next":
+        current_page += 1
+
+    reply_markup, current_page = build_paginated_keyboard(
+        context.user_data["data"], current_page
+    )
+
+    await query.edit_message_text("Выберите трек", reply_markup=reply_markup)

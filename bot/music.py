@@ -25,12 +25,12 @@ async def get_yandex_music_client(user_id: int):
         )
 
 
-async def get_last_five_liked_track(user_id: int):
+async def get_last_n_liked_track(user_id: int, n: int):
     client = await get_yandex_music_client(user_id)
 
-    five_liked_short_track = (await client.users_likes_tracks())[:5]
+    five_liked_short_track = (await client.users_likes_tracks())[:n]
     result = []
-    for i in range(0, 5):
+    for i in range(0, n):
         result.append((await client.tracks(five_liked_short_track[i].id))[0])
 
     return result

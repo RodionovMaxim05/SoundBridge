@@ -12,7 +12,7 @@ logging.basicConfig(
 )
 
 
-def main() -> None:
+def main():
     """
     Initializes the bot, sets up the application, and starts polling for updates.
     """

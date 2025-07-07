@@ -97,10 +97,11 @@ async def simple_format_history_music(music, is_group: bool, index: int) -> str:
     )
 
     music_url = make_url_for_music(music_info, music.type_of_music)
+    mark = f"{music.average_mark:.2f}" if music.count_of_ratings > 0 else "-"
 
     text = (
         f'<b>{index}.</b> <a href="{music_url}">{music.title}</a> | '
-        f"Ср. оценка: {music.average_mark:.2f} "
+        f"Ср. оценка: {mark} "
     )
     if is_group:
         text += f"| Пользователь: {database.get_username(music.user_id)}"
@@ -122,16 +123,17 @@ async def format_music_entry(music, is_group: bool, index: int = -1) -> str:
     )
     music_url = make_url_for_music(music_info, music.type_of_music)
 
-    mark = music.average_mark if music.count_of_ratings > 0 else "Оценок нет"
+    mark = f"{music.average_mark:.2f}" if music.count_of_ratings > 0 else "Оценок нет"
+
     if index != -1:
         text = (
             f'{index}. <a href="{music_url}">{music.title}</a>\n\n<b>Ср. '
-            f"оценка: {mark:.2f}</b>\n\n"
+            f"оценка: {mark}</b>\n\n"
         )
     else:
         text = (
             f'<a href="{music_url}">{music.title}</a>\n\n<b>Ср. оценка: '
-            f"{mark:.2f}</b>\n\n Пользователь: {database.get_username(music.user_id)}\n"
+            f"{mark}</b>\n\n Пользователь: {database.get_username(music.user_id)}\n"
         )
 
     if is_group:

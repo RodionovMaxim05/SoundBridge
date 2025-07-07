@@ -87,7 +87,7 @@ async def chosen_track_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         [
             InlineKeyboardButton(
                 "🔙 Назад",
-                callback_data=f"rate_{context.user_data["share_group_id"]}",
+                callback_data=f"rate_{context.user_data['share_group_id']}",
             )
         ],
     ]

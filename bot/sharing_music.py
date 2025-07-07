@@ -119,7 +119,7 @@ async def show_liked_track_handler(update: Update, context: ContextTypes.DEFAULT
     reply_markup, _ = build_paginated_keyboard(tracks, page=0)
 
     await query.edit_message_text(
-        f"{format_users_of_group(context.user_data["share_group_id"])}Выберите трек",
+        f"{format_users_of_group(context.user_data['share_group_id'])}Выберите трек",
         reply_markup=reply_markup,
     )
     return None
@@ -197,7 +197,7 @@ async def receive_search_query_handler(
         [
             InlineKeyboardButton(
                 "🔙 Назад",
-                callback_data=f"share_{context.user_data["share_group_id"]}",
+                callback_data=f"share_{context.user_data['share_group_id']}",
             )
         ]
     )

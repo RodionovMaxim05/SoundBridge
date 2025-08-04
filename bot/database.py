@@ -68,6 +68,7 @@ class Group(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
+    creator_id = Column(Integer, ForeignKey("Users.id"), nullable=False)
 
     users = relationship(
         "User", secondary=user_group_association, back_populates="groups"
@@ -226,7 +227,7 @@ class Database:
 
     def create_group(self, name: str, user_id: int):
         """Creates a new group and adds creator as member."""
-        group = Group(name=name)
+        group = Group(name=name, creator_id=user_id)
         user = session.query(User).filter(User.id == user_id).first()
         group.users = [user]
         session.add(group)
@@ -237,10 +238,24 @@ class Database:
         group = session.query(Group).filter(Group.id == group_id).first()
         return str(group.name) if group else None
 
-    def delete_group(self, group_id: int):
-        """Deletes a group and related data."""
+    def delete_group(self, user_id: int, group_id: int):
+        """
+        Deletes a group and all its related data if the user is the creator,
+        or removes the user from the group if they are not the creator.
+        """
         group = session.query(Group).filter(Group.id == group_id).first()
-        session.delete(group)
+
+        if group.creator_id == user_id:
+            session.query(UserGroupPlaylist).filter_by(group_id=group_id).delete()
+            group.users.clear()
+            session.delete(group)
+        else:
+            user = session.query(User).get(user_id)
+            user.groups.remove(group)
+            session.query(UserGroupPlaylist).filter_by(
+                user_id=user_id, group_id=group_id
+            ).delete()
+
         session.commit()
 
     def get_group_users(self, group_id: int):
@@ -259,6 +274,14 @@ class Database:
         """Returns all music shared in the group."""
         group = session.query(Group).filter(Group.id == group_id).first()
         return group.music
+
+    def delete_track(self, track_id: int):
+        """Deletes a track."""
+        track = session.query(Music).get(track_id)
+
+        session.query(MusicRating).filter_by(music_id=track_id).delete()
+        session.delete(track)
+        session.commit()
 
     # UserGroupPlaylist functions
 

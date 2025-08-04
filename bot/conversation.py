@@ -18,6 +18,9 @@ from bot.group_management import (
     add_user_to_the_group_handler,
     create_playlist_handler,
     group_playlist_handler,
+    delete_track_from_playlist_handler,
+    choose_track_to_delete_handler,
+    delete_chosen_track_handler,
 )
 from bot.history import (
     history_handler,
@@ -79,6 +82,10 @@ main_conversation = ConversationHandler(
                 pattern="^" + str(CallbackData.DELETE_GROUP.value) + "$",
             ),
             CallbackQueryHandler(
+                delete_track_from_playlist_handler,
+                pattern="^" + str(CallbackData.DELETE_TRACK.value) + "$",
+            ),
+            CallbackQueryHandler(
                 name_handler, pattern="^" + str(CallbackData.ADD_USER.value) + "$"
             ),
             CallbackQueryHandler(
@@ -120,13 +127,24 @@ main_conversation = ConversationHandler(
         State.TAKE_USERNAME.value: [
             MessageHandler(
                 filters.TEXT & ~filters.COMMAND, check_name_and_choose_group_handler
-            )
+            ),
+            CallbackQueryHandler(
+                start_handler, pattern="^" + str(CallbackData.MENU.value) + "$"
+            ),
         ],
         State.USER_TO_GROUP.value: [
             CallbackQueryHandler(
                 name_handler, pattern="^" + str(CallbackData.ADD_USER.value) + "$"
             ),
             CallbackQueryHandler(add_user_to_the_group_handler, pattern="^addUser_"),
+            CallbackQueryHandler(
+                start_handler, pattern="^" + str(CallbackData.MENU.value) + "$"
+            ),
+        ],
+        State.DELETE_TRACK.value: [
+            CallbackQueryHandler(choose_track_to_delete_handler, pattern="^playlist_"),
+            CallbackQueryHandler(pagination_handler, pattern="^(prev|next)_\\d+$"),
+            CallbackQueryHandler(delete_chosen_track_handler, pattern="^chosen_"),
             CallbackQueryHandler(
                 start_handler, pattern="^" + str(CallbackData.MENU.value) + "$"
             ),

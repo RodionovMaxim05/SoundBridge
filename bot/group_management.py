@@ -4,9 +4,15 @@ from telegram.ext import ContextTypes
 
 from bot.common_handlers import logger, group_selection
 from bot.constants import State, CallbackData
-from bot.music import create_or_update_playlist
+from bot.music import create_or_update_playlist, delete_track_from_playlists
 from bot.sharing_music import handle_error_with_back_button
-from bot.utils import database, format_groups_with_users
+from bot.utils import (
+    database,
+    format_groups_with_users,
+    build_paginated_keyboard,
+    format_users_of_group,
+    send_or_edit_message,
+)
 
 
 async def manage_groups_handler(update: Update, _) -> int:
@@ -43,6 +49,12 @@ async def manage_groups_handler(update: Update, _) -> int:
             InlineKeyboardButton(
                 "🗑 Удалить группу",
                 callback_data=str(CallbackData.DELETE_GROUP.value),
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔇 Удалить трек",
+                callback_data=str(CallbackData.DELETE_TRACK.value),
             )
         ],
         [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))],
@@ -176,7 +188,7 @@ async def delete_group_callback_handler(update: Update, _) -> int:
     callback_data = query.data
     group_id = int(callback_data.split("_")[1])
 
-    database.delete_group(group_id)
+    database.delete_group(update.effective_user.id, group_id)
 
     keyboard = [
         [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))],
@@ -236,7 +248,7 @@ async def check_name_and_choose_group_handler(
         keyboard.append(
             [
                 InlineKeyboardButton(
-                    "🔙 Назад", callback_data=str(CallbackData.MANAGE_GROUPS.value)
+                    "🔙 Назад", callback_data=str(CallbackData.MENU.value)
                 )
             ]
         )
@@ -360,3 +372,76 @@ async def group_playlist_handler(update: Update, _) -> int:
     )
 
     return State.START.value
+
+
+async def delete_track_from_playlist_handler(update: Update, _) -> int:
+    """Initiates the track deletion process by presenting group selection."""
+
+    user = update.effective_user
+    logger.info('User %d in "delete_track_from_playlist_handler"', user.id)
+
+    query = update.callback_query
+
+    reply_markup = group_selection(user, "playlist")
+    await query.edit_message_text(
+        "Выберите группу, в которой хотите удалить свой трек",
+        reply_markup=reply_markup,
+        parse_mode=telegram.constants.ParseMode.HTML,
+    )
+
+    return State.DELETE_TRACK.value
+
+
+async def choose_track_to_delete_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    """Shows the user the option to select tracks to delete in the selected group."""
+
+    user = update.effective_user
+    logger.info('User %d in "choose_track_to_delete_handler"', user.id)
+    query = update.callback_query
+    await query.answer()
+
+    callback_data = query.data
+    group_id = int(callback_data.split("_")[1])
+    context.user_data["delete_group_id"] = group_id
+
+    tracks = [
+        (music.title, music.id)
+        for music in database.get_group_sharing(group_id)
+        if music.user_id == user.id
+    ]
+
+    context.user_data["data"] = tracks
+
+    reply_markup, _ = build_paginated_keyboard(tracks, page=0)
+
+    await query.edit_message_text(
+        f"{format_users_of_group(group_id)}Выберите трек",
+        reply_markup=reply_markup,
+    )
+    return None
+
+
+async def delete_chosen_track_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """Executes final track deletion and confirms completion."""
+
+    logger.info('User %d in "delete_chosen_track_handler"', update.effective_user.id)
+    query = update.callback_query
+    await query.answer()
+
+    track_id = int(query.data.split("_")[1])
+    await delete_track_from_playlists(context.user_data["delete_group_id"], track_id)
+    database.delete_track(track_id)
+
+    keyboard = [
+        [InlineKeyboardButton("🔙 Назад", callback_data=str(CallbackData.MENU.value))],
+    ]  # pylint: disable=R0801
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await send_or_edit_message(
+        update,
+        text="✅ Трек успешно удален",
+        reply_markup=reply_markup,
+    )

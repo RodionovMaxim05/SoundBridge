@@ -75,16 +75,6 @@ async def search_request(user_id: int, query: str, type_of_search: str):
     )
 
 
-async def get_group_track_list(user_id: int, group_id: int):
-    """
-    Returns all tracks from a group`s playlist.
-    """
-
-    client = await get_yandex_music_client(user_id)
-    playlist = database.get_playlist(user_id, group_id)
-    return (await client.users_playlists(playlist.kind)).tracks
-
-
 async def update_tracks(client: ClientAsync, playlist, user_id: int, group_id: int):
     """
     Syncs playlist in Yandex Music with new tracks added to the group.
@@ -101,6 +91,8 @@ async def update_tracks(client: ClientAsync, playlist, user_id: int, group_id: i
             continue
 
         track_info = await get_track_info(user_id, track.yandex_id)
+
+        # After each added track the revision changes
         updated_playlist = await client.users_playlists(kind=playlist.kind)
 
         await client.users_playlists_insert_track(
@@ -154,6 +146,43 @@ async def download_new_tracks_from_playlist(user_id: int, group_id: int):
                 )
 
 
+async def delete_track_from_playlists(group_id: int, track_id: int):
+    """Removes a track from all users' playlists in a specified group."""
+
+    track_id_ym = database.get_music_by_id(track_id).yandex_id
+
+    for user in database.get_group_users(group_id):
+        try:
+            playlist_usr = database.get_playlist(user.id, group_id)
+            user_client = await get_yandex_music_client(user.id)
+
+            playlist = await user_client.users_playlists(playlist_usr.kind)
+            track_list_pl = playlist.tracks
+
+            track_info = await get_track_info(user.id, track_id_ym)
+            track_id = int(track_info.track_id.split(":")[0])
+
+            for index, _ in enumerate(track_list_pl):
+                if track_list_pl[index].id != track_id:
+                    continue
+
+                await user_client.users_playlists_delete_track(
+                    kind=playlist_usr.kind,
+                    from_=index,
+                    to=(index + 1),  # idk why this is so...
+                    revision=playlist.revision,
+                )
+                break
+
+        except (yandex_music.exceptions.YandexMusicError, AttributeError) as e:
+            logger.error(
+                "Failed to delete track for user %d in group %d: %s",
+                user.id,
+                group_id,
+                e,
+            )
+
+
 async def create_or_update_playlist(user_id: int, group_id: int, title: str = ""):
     """
     Creates or updates a group playlist. If playlist doesn't exist — creates one.
@@ -190,7 +219,7 @@ async def playlist_update_job(_):
                 logger.info(
                     "Updated playlist for user %d in group %d", user.id, group.id
                 )
-            except (yandex_music.exceptions.YandexMusicError, ValueError) as e:
+            except (yandex_music.exceptions.YandexMusicError, AttributeError) as e:
                 logger.error(
                     "Failed to update playlist for user %d in group %d: %s",
                     user.id,

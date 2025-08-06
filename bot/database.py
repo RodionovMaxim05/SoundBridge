@@ -301,11 +301,30 @@ class Database:
         return (
             session.query(UserGroupPlaylist)
             .filter(
-                UserGroupPlaylist.user_id == user_id
-                and UserGroupPlaylist.group_id == group_id
+                UserGroupPlaylist.user_id == user_id,
+                UserGroupPlaylist.group_id == group_id,
             )
             .first()
         )
+
+    def update_playlist_info(
+        self, user_id: int, group_id: int, new_kind: int, new_uid: int
+    ):
+        """Updates the kind and uid of an existing user's playlist in a group."""
+
+        playlist = (
+            session.query(UserGroupPlaylist)
+            .filter(
+                UserGroupPlaylist.user_id == user_id,
+                UserGroupPlaylist.group_id == group_id,
+            )
+            .first()
+        )
+
+        playlist.kind = new_kind
+        playlist.uid = new_uid
+
+        session.commit()
 
     # Music functions
 

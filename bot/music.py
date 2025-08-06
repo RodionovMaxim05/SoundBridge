@@ -199,6 +199,18 @@ async def create_or_update_playlist(user_id: int, group_id: int, title: str = ""
             )
         else:
             return
+    else:
+        try:
+            await client.users_playlists(playlist.kind)
+
+        # If playlist not found
+        # For some reason it returns exception, not 'None'
+        except yandex_music.exceptions.NotFoundError:
+            group_name = database.get_group_name(group_id)
+            playlist = await client.users_playlists_create(group_name)
+            database.update_playlist_info(
+                user_id, group_id, playlist.kind, playlist.owner.uid
+            )
 
     await update_tracks(client, playlist, user_id, group_id)
     await download_new_tracks_from_playlist(user_id, group_id)
